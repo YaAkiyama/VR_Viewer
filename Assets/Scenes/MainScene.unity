@@ -9194,7 +9194,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 9707c5f5c4f8cad4e8b91b678d931181, type: 3}
+  m_Sprite: {fileID: 21300000, guid: ec790ed25e6c52e4e98ceb2a45612b7c, type: 3}
   m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
@@ -10361,10 +10361,17 @@ MonoBehaviour:
   thumbnailSpacing: 10
   thumbnailWidth: 120
   thumbnailHeight: 90
-  xPositionOffset: -390
   startPadding: 10
+  autoAdjustPosition: 1
+  useAdvancedOffsetCalculation: 1
+  offsetBaseValue: -150
+  offsetScaleFactor: -110
+  offsetCurveExponent: 0.5
   limitScrollBounds: 1
   scrollEndPadding: 0
+  centerCurrentThumbnail: 1
+  scrollAnimationDuration: 0.3
+  scrollOnThumbnailClick: 0
   markerManager: {fileID: 1993654580}
 --- !u!1 &1833349558
 GameObject:
@@ -11169,29 +11176,61 @@ MonoBehaviour:
     panoramaPath: Image/360/R0010040.JPG
     thumbnailPath: Image/thumbnail/R0010040.JPG
   - pointNumber: 1
-    position: {x: -200, y: 130}
-    panoramaPath: Image/360/R0010041.JPG
-    thumbnailPath: Image/thumbnail/R0010041.JPG
+    position: {x: -220, y: 31}
+    panoramaPath: Image/360/R0010040.JPG
+    thumbnailPath: Image/thumbnail/R0010040.JPG
   - pointNumber: 2
-    position: {x: 40, y: -30}
-    panoramaPath: Image/360/R0010042.JPG
-    thumbnailPath: Image/thumbnail/R0010042.JPG
+    position: {x: 0, y: 0}
+    panoramaPath: Image/360/R0010040.JPG
+    thumbnailPath: Image/thumbnail/R0010040.JPG
   - pointNumber: 3
-    position: {x: -150, y: -30}
-    panoramaPath: Image/360/R0010043.JPG
-    thumbnailPath: Image/thumbnail/R0010043.JPG
+    position: {x: 0, y: 0}
+    panoramaPath: Image/360/R0010040.JPG
+    thumbnailPath: Image/thumbnail/R0010040.JPG
   - pointNumber: 4
-    position: {x: -100, y: -30}
-    panoramaPath: Image/360/R0010044.JPG
-    thumbnailPath: Image/thumbnail/R0010044.JPG
+    position: {x: 0, y: 0}
+    panoramaPath: Image/360/R0010040.JPG
+    thumbnailPath: Image/thumbnail/R0010040.JPG
   - pointNumber: 5
-    position: {x: -50, y: -30}
-    panoramaPath: Image/360/R0010045.JPG
-    thumbnailPath: Image/thumbnail/R0010045.JPG
+    position: {x: 0, y: 0}
+    panoramaPath: Image/360/R0010040.JPG
+    thumbnailPath: Image/thumbnail/R0010040.JPG
   - pointNumber: 6
-    position: {x: 0, y: -30}
-    panoramaPath: Image/360/R0010046.JPG
-    thumbnailPath: Image/thumbnail/R0010046.JPG
+    position: {x: 0, y: 0}
+    panoramaPath: Image/360/R0010040.JPG
+    thumbnailPath: Image/thumbnail/R0010040.JPG
+  - pointNumber: 7
+    position: {x: 0, y: 0}
+    panoramaPath: Image/360/R0010040.JPG
+    thumbnailPath: Image/thumbnail/R0010040.JPG
+  - pointNumber: 8
+    position: {x: 0, y: 0}
+    panoramaPath: Image/360/R0010040.JPG
+    thumbnailPath: Image/thumbnail/R0010040.JPG
+  - pointNumber: 9
+    position: {x: 0, y: 0}
+    panoramaPath: Image/360/R0010040.JPG
+    thumbnailPath: Image/thumbnail/R0010040.JPG
+  - pointNumber: 10
+    position: {x: 0, y: 0}
+    panoramaPath: Image/360/R0010040.JPG
+    thumbnailPath: Image/thumbnail/R0010040.JPG
+  - pointNumber: 11
+    position: {x: 0, y: 0}
+    panoramaPath: Image/360/R0010040.JPG
+    thumbnailPath: Image/thumbnail/R0010040.JPG
+  - pointNumber: 12
+    position: {x: 0, y: 0}
+    panoramaPath: Image/360/R0010040.JPG
+    thumbnailPath: Image/thumbnail/R0010040.JPG
+  - pointNumber: 13
+    position: {x: 0, y: 0}
+    panoramaPath: Image/360/R0010040.JPG
+    thumbnailPath: Image/thumbnail/R0010040.JPG
+  - pointNumber: 14
+    position: {x: 0, y: 0}
+    panoramaPath: Image/360/R0010040.JPG
+    thumbnailPath: Image/thumbnail/R0010040.JPG
 --- !u!4 &1993654581
 Transform:
   m_ObjectHideFlags: 0

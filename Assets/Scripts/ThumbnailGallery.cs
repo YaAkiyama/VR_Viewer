@@ -13,15 +13,27 @@ public class ThumbnailGallery : MonoBehaviour
     [SerializeField] private float thumbnailHeight = 90f;  // サムネイルの高さ
 
     [Header("位置調整")]
-    [SerializeField] private float xPositionOffset = -380f; // X位置の調整（負の値で左に移動）
     [SerializeField] private float startPadding = 10f;     // 最初のサムネイルの前の余白
+    [SerializeField] private bool autoAdjustPosition = true; // X位置を自動調整するかどうか
+
+    [Header("オフセット設定")]
+    [SerializeField] private bool useAdvancedOffsetCalculation = true; // 高度なオフセット計算を使用するかどうか
+    [SerializeField] private float offsetBaseValue = -150f; // ベースオフセット値（要素1つの時）
+    [SerializeField] private float offsetScaleFactor = -110f; // 要素数増加に伴うスケーリング係数
+    [SerializeField] private float offsetCurveExponent = 0.5f; // 曲線の指数（0.5は平方根カーブ）
 
     [Header("スクロール設定")]
     [SerializeField] private bool limitScrollBounds = true; // スクロール範囲を制限するかどうか
     [SerializeField] private float scrollEndPadding = 0f;   // スクロール端の余白（正の値でスクロール範囲が狭くなる）
+    [SerializeField] private bool centerCurrentThumbnail = true; // 現在選択中のサムネイルを中央に表示するかどうか
+    [SerializeField] private float scrollAnimationDuration = 0.3f; // スクロールアニメーション時間（秒）
+    [SerializeField] private bool scrollOnThumbnailClick = false; // サムネイルクリック時にスクロールするかどうか
 
     [Header("参照")]
     [SerializeField] private MapMarkerManager markerManager; // マーカーマネージャー
+
+    // 内部で計算される位置調整値
+    private float xPositionOffset = -380f; // X位置の調整（負の値で左に移動）
 
     // サムネイルオブジェクトを保存するリスト
     private List<GameObject> thumbnailObjects = new List<GameObject>();
@@ -29,6 +41,15 @@ public class ThumbnailGallery : MonoBehaviour
     private ScrollRect scrollRect;
     private float minScrollPosition = 0f;  // 左端（最初のサムネイル）
     private float maxScrollPosition = 1f;  // 右端（最後のサムネイル）
+
+    // スクロールアニメーション用
+    private bool isScrolling = false;
+    private float scrollStartTime;
+    private float scrollStartPos;
+    private float scrollTargetPos;
+
+    // サムネイルクリック検知用
+    private bool thumbnailWasClicked = false;
 
     void Awake()
     {
@@ -77,6 +98,65 @@ public class ThumbnailGallery : MonoBehaviour
         {
             scrollRect.onValueChanged.RemoveListener(OnScrollValueChanged);
         }
+    }
+
+    void Update()
+    {
+        // スクロールアニメーションの処理
+        if (isScrolling)
+        {
+            float elapsedTime = Time.time - scrollStartTime;
+            float normalizedTime = Mathf.Clamp01(elapsedTime / scrollAnimationDuration);
+
+            // イージング関数（EaseOutCubic）を適用
+            float t = 1f - Mathf.Pow(1f - normalizedTime, 3);
+
+            // 現在のスクロール位置を計算
+            float currentScrollPos = Mathf.Lerp(scrollStartPos, scrollTargetPos, t);
+            scrollRect.horizontalNormalizedPosition = currentScrollPos;
+
+            // アニメーション終了判定
+            if (normalizedTime >= 1f)
+            {
+                isScrolling = false;
+            }
+        }
+    }
+
+    // X位置オフセットを自動計算（改良版）
+    private void CalculateXPositionOffset()
+    {
+        if (!autoAdjustPosition) return;
+
+        // マーカーの数を取得
+        int markerCount = markerManager.GetMarkerData().Count;
+
+        if (markerCount <= 0)
+        {
+            xPositionOffset = 0f;
+            return;
+        }
+
+        if (useAdvancedOffsetCalculation)
+        {
+            // 高度な計算方法（べき乗曲線による近似）
+            // 提供されたデータポイントに基づく計算方法
+            float offsetValue = offsetBaseValue + offsetScaleFactor * Mathf.Pow(markerCount, offsetCurveExponent);
+
+            // ビューポートの幅による調整
+            float viewportWidth = scrollRect ? scrollRect.viewport.rect.width : 800f;
+            float defaultViewportWidth = 800f;
+            float viewportScaleFactor = defaultViewportWidth / viewportWidth;
+
+            xPositionOffset = offsetValue * viewportScaleFactor;
+        }
+        else
+        {
+            // 単純な計算方法（直線的な関係）
+            xPositionOffset = offsetBaseValue * markerCount;
+        }
+
+        Debug.Log($"自動計算されたxPositionOffset: {xPositionOffset}（マーカー数: {markerCount}）");
     }
 
     // スクロール範囲を計算
@@ -133,7 +213,7 @@ public class ThumbnailGallery : MonoBehaviour
     // スクロール位置変更時のイベントハンドラ
     private void OnScrollValueChanged(Vector2 position)
     {
-        if (!limitScrollBounds) return;
+        if (!limitScrollBounds || isScrolling) return;
 
         // 水平スクロール位置を制限
         float horizontalPos = position.x;
@@ -181,6 +261,12 @@ public class ThumbnailGallery : MonoBehaviour
 
         // ポイント番号でソート
         markers = markers.OrderBy(m => m.pointNumber).ToList();
+
+        // X位置オフセットを自動計算
+        if (autoAdjustPosition)
+        {
+            CalculateXPositionOffset();
+        }
 
         // サムネイルを作成
         // 開始位置に全体的なX位置の調整と開始余白を追加
@@ -277,6 +363,9 @@ public class ThumbnailGallery : MonoBehaviour
     // サムネイルクリック時の処理
     private void OnThumbnailClicked(int markerIndex)
     {
+        // サムネイルクリックフラグをセット
+        thumbnailWasClicked = true;
+
         // マーカーマネージャーに通知
         markerManager.OnMarkerClicked(markerIndex);
     }
@@ -284,10 +373,26 @@ public class ThumbnailGallery : MonoBehaviour
     // マーカー選択時の処理（イベント受信）
     private void OnMarkerSelected(int markerIndex)
     {
+        // 選択中のサムネイルを更新
         UpdateSelectedThumbnail(markerIndex);
 
-        // 選択されたサムネイルが見えるようにスクロール
-        ScrollToThumbnail(markerIndex);
+        // サムネイルクリックの場合はスクロールしない設定の場合
+        bool shouldScroll = true;
+
+        if (thumbnailWasClicked && !scrollOnThumbnailClick)
+        {
+            shouldScroll = false;
+        }
+
+        // フラグをリセット
+        thumbnailWasClicked = false;
+
+        // 条件に応じてスクロール
+        if (shouldScroll)
+        {
+            // 選択されたサムネイルが見えるようにスクロール
+            ScrollToThumbnail(markerIndex);
+        }
     }
 
     // 選択中のサムネイルを更新
@@ -348,31 +453,69 @@ public class ThumbnailGallery : MonoBehaviour
             // ビューポートの幅
             float viewportWidth = scrollRect.viewport.rect.width;
 
-            // X位置の調整を考慮して正規化されたスクロール位置を計算
-            // xPositionOffsetを考慮して調整
-            float adjustedPosX = thumbnailPosX - xPositionOffset;
-            float normalizedPos = adjustedPosX / (contentWidth - viewportWidth);
+            // 中央に表示するかどうかで計算を変更
+            float targetPosX;
 
-            // スクロールの向きに応じて調整
-            if (contentWidth > viewportWidth)
+            if (centerCurrentThumbnail)
             {
-                // 左端が0、右端が1の場合
-                if (scrollRect.horizontalNormalizedPosition == 0 && galleryContent.anchoredPosition.x == 0)
-                {
-                    // そのまま使用
-                }
-                else
+                // サムネイルを中央に表示する場合
+                // ビューポートの中央位置に合わせる
+                targetPosX = thumbnailPosX - (viewportWidth / 2) + (thumbnailWidth / 2);
+            }
+            else
+            {
+                // 従来の計算方法（サムネイルが見えるように表示）
+                targetPosX = thumbnailPosX - xPositionOffset;
+            }
+
+            // X位置の調整を考慮して正規化されたスクロール位置を計算
+            float normalizedPos;
+
+            if (contentWidth <= viewportWidth)
+            {
+                // コンテンツがビューポートより小さい場合は先頭に
+                normalizedPos = 0;
+            }
+            else
+            {
+                // スクロール可能な範囲を計算
+                float scrollableArea = contentWidth - viewportWidth;
+
+                // 位置を正規化（0-1の範囲に）
+                normalizedPos = Mathf.Clamp(targetPosX / scrollableArea, 0f, 1f);
+
+                // スクロールの向きに応じて調整
+                if (!(scrollRect.horizontalNormalizedPosition == 0 && galleryContent.anchoredPosition.x == 0))
                 {
                     // 左端が1、右端が0の場合は反転
                     normalizedPos = 1 - normalizedPos;
                 }
-
-                // 値を0〜1の範囲に収める
-                normalizedPos = Mathf.Clamp01(normalizedPos);
-
-                // スクロール位置を設定
-                scrollRect.horizontalNormalizedPosition = normalizedPos;
             }
+
+            // 値を範囲内に収める
+            normalizedPos = Mathf.Clamp(normalizedPos,
+                                      Mathf.Min(minScrollPosition, maxScrollPosition),
+                                      Mathf.Max(minScrollPosition, maxScrollPosition));
+
+            // アニメーション付きでスクロール
+            AnimateScrollTo(normalizedPos);
+        }
+    }
+
+    // スクロールアニメーションを開始
+    private void AnimateScrollTo(float targetNormalizedPos)
+    {
+        // アニメーション状態を初期化
+        isScrolling = true;
+        scrollStartTime = Time.time;
+        scrollStartPos = scrollRect.horizontalNormalizedPosition;
+        scrollTargetPos = targetNormalizedPos;
+
+        // アニメーション時間がゼロなら即座に移動
+        if (scrollAnimationDuration <= 0)
+        {
+            scrollRect.horizontalNormalizedPosition = targetNormalizedPos;
+            isScrolling = false;
         }
     }
 
@@ -424,6 +567,7 @@ public class ThumbnailGallery : MonoBehaviour
     public void SetXPositionOffset(float offset)
     {
         xPositionOffset = offset;
+        autoAdjustPosition = false; // 手動設定の場合は自動調整を無効化
         RebuildGallery();
     }
 
@@ -431,6 +575,82 @@ public class ThumbnailGallery : MonoBehaviour
     public void AdjustXPosition(float adjustment)
     {
         xPositionOffset += adjustment;
+        autoAdjustPosition = false; // 手動調整の場合は自動調整を無効化
         RebuildGallery();
+    }
+
+    // サムネイルの中央表示設定を変更
+    public void SetCenterCurrentThumbnail(bool center, float animationDuration = 0.3f)
+    {
+        centerCurrentThumbnail = center;
+        scrollAnimationDuration = animationDuration;
+
+        // 現在選択中のサムネイルがあれば、位置を更新
+        if (currentSelectedIndex >= 0 && markerManager != null)
+        {
+            // 順番でソートしたマーカーリストを取得
+            List<MapMarker> markers = markerManager.GetMarkerData()
+                .OrderBy(m => m.pointNumber)
+                .ToList();
+
+            if (currentSelectedIndex < markers.Count)
+            {
+                // 現在のマーカーのpointNumberを取得
+                int currentMarkerIndex = markers[currentSelectedIndex].pointNumber;
+                // スクロール位置を更新
+                ScrollToThumbnail(currentMarkerIndex);
+            }
+        }
+    }
+
+    // サムネイルクリック時のスクロール設定を変更
+    public void SetScrollOnThumbnailClick(bool scroll)
+    {
+        scrollOnThumbnailClick = scroll;
+    }
+
+    // 自動位置調整設定を変更
+    public void SetAutoAdjustPosition(bool autoAdjust)
+    {
+        if (autoAdjustPosition != autoAdjust)
+        {
+            autoAdjustPosition = autoAdjust;
+            if (autoAdjust)
+            {
+                // 自動調整に切り替える場合は再計算
+                CalculateXPositionOffset();
+            }
+            RebuildGallery();
+        }
+    }
+
+    // オフセット計算パラメータを設定
+    public void SetOffsetCalculationParameters(float baseValue, float scaleFactor, float curveExponent)
+    {
+        offsetBaseValue = baseValue;
+        offsetScaleFactor = scaleFactor;
+        offsetCurveExponent = curveExponent;
+
+        if (autoAdjustPosition)
+        {
+            CalculateXPositionOffset();
+            RebuildGallery();
+        }
+    }
+
+    // オフセット計算パラメータの最適化
+    public void OptimizeOffsetParameters()
+    {
+        // 提供されたデータポイントをもとに、最適なパラメータを計算
+        // これは簡略化のため、手動で調整した値に近い値を設定する
+        offsetBaseValue = -150f;  // 1つの場合のベース値
+        offsetScaleFactor = -120f; // スケーリング係数
+        offsetCurveExponent = 0.5f; // 平方根に近い曲線
+
+        if (autoAdjustPosition)
+        {
+            CalculateXPositionOffset();
+            RebuildGallery();
+        }
     }
 }
