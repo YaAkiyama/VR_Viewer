@@ -1,11 +1,10 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using Unity.XR.CoreUtils;
-using UnityEngine.XR.Interaction.Toolkit.Inputs;
 
 public class PanoramaControllerInput : MonoBehaviour
 {
     private Panorama360Controller panoramaController;
+    private MapMarkerManager markerManager;
 
     // 入力アクションリファレンス
     [SerializeField] private InputActionReference rightPrimaryButtonAction;
@@ -17,6 +16,15 @@ public class PanoramaControllerInput : MonoBehaviour
     void Start()
     {
         panoramaController = GetComponent<Panorama360Controller>();
+
+        // MapMarkerManagerの参照を取得
+        markerManager = FindFirstObjectByType<MapMarkerManager>();
+        if (markerManager == null)
+        {
+            Debug.LogError("MapMarkerManagerが見つかりません。PanoramaControllerInputを使用するにはMapMarkerManagerが必要です。");
+            enabled = false; // エラーがある場合はコンポーネントを無効化
+            return;
+        }
 
         // 入力アクションのコールバックを設定
         if (rightPrimaryButtonAction != null)
@@ -57,7 +65,7 @@ public class PanoramaControllerInput : MonoBehaviour
         if (!rightButtonPressed)
         {
             rightButtonPressed = true;
-            panoramaController.NextPanorama();
+            markerManager.SelectNextMarker(); // panoramaController.NextPanorama()から変更
         }
     }
 
@@ -71,7 +79,7 @@ public class PanoramaControllerInput : MonoBehaviour
         if (!leftButtonPressed)
         {
             leftButtonPressed = true;
-            panoramaController.PreviousPanorama();
+            markerManager.SelectPreviousMarker(); // panoramaController.PreviousPanoramaから変更
         }
     }
 
