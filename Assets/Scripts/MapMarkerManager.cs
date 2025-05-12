@@ -23,6 +23,7 @@ public class MapMarkerManager : MonoBehaviour
     [SerializeField] private bool smoothRotation = true;        // 回転をスムーズに行うかどうか
     [SerializeField] private float rotationSmoothSpeed = 5f;    // 回転のスムーズ度
     [SerializeField] private bool hideOriginalMarker = true;   // 選択中の通常マーカーを非表示にするか
+    [SerializeField] private bool invertRotation = true;       // 回転方向を反転させるかどうか
 
     // 静的イベント（他のコンポーネントからの参照用）
     public delegate void MarkerSelectedHandler(int markerId);
@@ -97,6 +98,12 @@ public class MapMarkerManager : MonoBehaviour
 
         // カメラのY軸回転を取得
         float cameraYRotation = cameraTransform.eulerAngles.y;
+
+        // 回転方向を反転させる場合は符号を反転
+        if (invertRotation)
+        {
+            cameraYRotation = -cameraYRotation;
+        }
 
         // マーカーの回転目標を設定（Z軸にマッピング）
         targetRotation = cameraYRotation + markerRotationOffset;
@@ -221,6 +228,13 @@ public class MapMarkerManager : MonoBehaviour
             if (rotateCurrentMarker && cameraTransform != null)
             {
                 float cameraYRotation = cameraTransform.eulerAngles.y;
+
+                // 回転方向を反転させる場合は符号を反転
+                if (invertRotation)
+                {
+                    cameraYRotation = -cameraYRotation;
+                }
+
                 targetRotation = cameraYRotation + markerRotationOffset;
 
                 if (!smoothRotation)
@@ -306,10 +320,11 @@ public class MapMarkerManager : MonoBehaviour
     }
 
     // 現在地マーカーの回転設定を変更
-    public void SetCurrentMarkerRotation(bool enable, float offset = 0f)
+    public void SetCurrentMarkerRotation(bool enable, float offset = 0f, bool invert = true)
     {
         rotateCurrentMarker = enable;
         markerRotationOffset = offset;
+        invertRotation = invert;
 
         // 即時適用
         if (currentPositionMarker != null && currentPositionMarker.activeSelf)
@@ -328,6 +343,21 @@ public class MapMarkerManager : MonoBehaviour
     public int GetCurrentMarkerIndex()
     {
         return currentMarkerIndex;
+    }
+
+    // 回転方向の反転設定を変更
+    public void SetInvertRotation(bool invert)
+    {
+        if (invertRotation != invert)
+        {
+            invertRotation = invert;
+
+            // 即時適用
+            if (currentPositionMarker != null && currentPositionMarker.activeSelf && rotateCurrentMarker)
+            {
+                UpdateCurrentMarkerRotation();
+            }
+        }
     }
 
     // マーカーの表示状態を更新する（プログラム的に他の場所から呼び出す場合用）
