@@ -15,6 +15,12 @@ public class PanelVisibilityController : MonoBehaviour
     private Dictionary<GameObject, CanvasGroup> panelCanvasGroups = new Dictionary<GameObject, CanvasGroup>();
     private bool isInViewRange = true;
     private Coroutine fadeCoroutine;
+    private bool forcedVisible = true; // 強制表示フラグ
+    private bool isForcedState = false; // 強制状態かどうか
+
+    // プロパティを公開
+    public float MinViewAngleX => minViewAngleX;
+    public float MaxViewAngleX => maxViewAngleX;
 
     void Start()
     {
@@ -50,7 +56,7 @@ public class PanelVisibilityController : MonoBehaviour
 
     void Update()
     {
-        if (cameraTransform == null) return;
+        if (cameraTransform == null || isForcedState) return;
 
         // カメラの前方向ベクトルから角度を計算
         float cameraXRotation = cameraTransform.eulerAngles.x;
@@ -123,6 +129,28 @@ public class PanelVisibilityController : MonoBehaviour
         }
     }
 
+    // 強制的にパネルの表示/非表示を切り替える
+    public void ToggleForcedVisibility()
+    {
+        forcedVisible = !forcedVisible;
+        isForcedState = true;
+
+        // 既存のフェードコルーチンがあれば停止
+        if (fadeCoroutine != null)
+        {
+            StopCoroutine(fadeCoroutine);
+        }
+
+        // 新しいフェードコルーチンを開始
+        fadeCoroutine = StartCoroutine(FadePanels(forcedVisible));
+    }
+
+    // 強制状態を解除
+    public void DisableForcedState()
+    {
+        isForcedState = false;
+    }
+
     // パネルを追加
     public void AddPanel(GameObject panel)
     {
@@ -160,5 +188,20 @@ public class PanelVisibilityController : MonoBehaviour
     {
         minViewAngleX = min;
         maxViewAngleX = max;
+    }
+    // 視野角内かどうかを返すメソッド
+    public bool IsInViewRange()
+    {
+        if (cameraTransform == null) return false;
+
+        // カメラの前方向ベクトルから角度を計算
+        float cameraXRotation = cameraTransform.eulerAngles.x;
+
+        // 0-360度範囲から-180から180度範囲に変換
+        if (cameraXRotation > 180f)
+            cameraXRotation -= 360f;
+
+        // 視野範囲内かどうかをチェック
+        return (cameraXRotation >= minViewAngleX && cameraXRotation <= maxViewAngleX);
     }
 }
