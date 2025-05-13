@@ -36,6 +36,7 @@ public class VRLaserPointer : MonoBehaviour
     [SerializeField] private bool processAllCanvases = true; // すべてのCanvasを処理するかどうか
     [SerializeField] private bool useClosestHit = true;      // 最も近いヒットを使用するかどうか
     [SerializeField] private float dragThresholdDistance = 2f; // ドラッグ開始するための最小移動距離
+    [SerializeField] private float scrollSensitivity = 0.2f;   // スクロール感度
 
     // レーザー用のコンポーネント
     private LineRenderer lineRenderer;
@@ -68,6 +69,12 @@ public class VRLaserPointer : MonoBehaviour
     private ScrollRect activeScrollRect = null;
     private Vector2 lastPointerPosition;
     private Vector2 totalDragDelta = Vector2.zero;
+    private Vector2 previousScrollPosition;
+    private Canvas hitCanvas;
+
+    // スクロール種別
+    private enum ScrollDirection { Horizontal, Vertical, Both }
+    private ScrollDirection activeScrollDirection = ScrollDirection.Horizontal;
 
     // 複数ヒット管理用
     private struct UIHitInfo
@@ -140,12 +147,23 @@ public class VRLaserPointer : MonoBehaviour
                     if (thumbnailScrollRect != null)
                     {
                         Debug.Log($"[LaserPointer] ThumbnailScrollRectを自動検出: {thumbnailScrollRect.gameObject.name}");
+                        // 水平方向のスクロールを有効化
+                        thumbnailScrollRect.horizontal = true;
+                        
+                        // 感度を調整
+                        thumbnailScrollRect.scrollSensitivity = 10.0f;
                     }
                     else
                     {
                         Debug.LogWarning("[LaserPointer] ThumbnailCanvas内にScrollRectが見つかりません");
                     }
                 }
+            }
+            else
+            {
+                // 設定済みのThumbnailScrollRectの設定を最適化
+                thumbnailScrollRect.horizontal = true;
+                thumbnailScrollRect.scrollSensitivity = 10.0f;
             }
 
             // レーザー用のLineRendererを設定
@@ -459,6 +477,17 @@ public class VRLaserPointer : MonoBehaviour
 
             // ドラッグ処理の更新
             UpdateDrag();
+
+            // スクロール中のデバッグ表示
+            if (isDragging && triggerPressed && activeScrollRect != null)
+            {
+                if (Time.frameCount % 10 == 0)
+                {
+                    Debug.LogError($"[LaserPointer] スクロール状態: ScrollRect={activeScrollRect.name}, " +
+                                   $"ScrollPos={activeScrollRect.normalizedPosition}, " +
+                                   $"Dragging={isDragging}, Delta={totalDragDelta}");
+                }
+            }
         }
         catch (System.Exception e)
         {
@@ -520,6 +549,7 @@ public class VRLaserPointer : MonoBehaviour
             // 前フレームのターゲットを保存
             lastTarget = currentTarget;
             currentTarget = null;
+            hitCanvas = null;
 
             // レイの最大距離を初期化
             float hitDistance = maxRayDistance;
@@ -602,6 +632,7 @@ public class VRLaserPointer : MonoBehaviour
                     UIHitInfo selectedHit = uiHits[0];
                     currentTarget = selectedHit.target;
                     hitDistance = selectedHit.distance;
+                    hitCanvas = selectedHit.canvas;
 
                     // 更新されたポインター位置を保存
                     lastPointerPosition = selectedHit.screenPosition;
@@ -701,7 +732,20 @@ public class VRLaserPointer : MonoBehaviour
                     // まずScrollRectを探す
                     FindAndSetScrollRect();
 
-                    Debug.LogError($"[LaserPointer] ドラッグ開始: オブジェクト={draggedObject.name}, 距離={totalDragDelta.magnitude}, ScrollRect={activeScrollRect != null}");
+                    // ドラッグ開始時のスクロール位置を記録
+                    if (activeScrollRect != null)
+                    {
+                        previousScrollPosition = activeScrollRect.normalizedPosition;
+                        
+                        // スクロール方向を決定
+                        DetermineScrollDirection();
+                        
+                        Debug.LogError($"[LaserPointer] ドラッグ開始: ScrollRect={activeScrollRect.name}, 初期位置={previousScrollPosition}, 方向={activeScrollDirection}");
+                    }
+                    else
+                    {
+                        Debug.LogError($"[LaserPointer] ドラッグ開始: オブジェクト={draggedObject.name}, ScrollRectなし");
+                    }
 
                     // ドラッグ開始イベントを発行
                     cachedPointerData.pointerDrag = draggedObject;
@@ -710,35 +754,27 @@ public class VRLaserPointer : MonoBehaviour
                     cachedPointerData.position = currentPointerPosition;
                     cachedPointerData.delta = dragDelta;
                     
-                    ExecuteEvents.Execute(draggedObject, cachedPointerData, ExecuteEvents.beginDragHandler);
+                    if (activeScrollRect == null)
+                    {
+                        ExecuteEvents.Execute(draggedObject, cachedPointerData, ExecuteEvents.beginDragHandler);
+                    }
                 }
 
                 // ドラッグ中の処理
                 if (isDragging)
                 {
-                    // ドラッグイベントを発行
-                    cachedPointerData.position = currentPointerPosition;
-                    cachedPointerData.delta = dragDelta;
-                    cachedPointerData.dragging = true;
-                    
                     // ScrollRect処理
                     if (activeScrollRect != null)
                     {
-                        if (activeScrollRect.horizontal || activeScrollRect.vertical)
-                        {
-                            // 直接OnDragを呼び出し
-                            activeScrollRect.OnDrag(cachedPointerData);
-                            
-                            // スクロール中のデバッグ情報
-                            if (Time.frameCount % 10 == 0)
-                            {
-                                Debug.LogError($"[LaserPointer] スクロール中: Delta={dragDelta}, ScrollPos={activeScrollRect.normalizedPosition}");
-                            }
-                        }
+                        // ScrollRectの直接制御
+                        UpdateScrollRectPosition(dragDelta);
                     }
                     else
                     {
                         // 通常のドラッグイベント
+                        cachedPointerData.position = currentPointerPosition;
+                        cachedPointerData.delta = dragDelta;
+                        cachedPointerData.dragging = true;
                         ExecuteEvents.Execute(draggedObject, cachedPointerData, ExecuteEvents.dragHandler);
                     }
                 }
@@ -746,7 +782,83 @@ public class VRLaserPointer : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] UpdateDrag エラー: {e.Message}\n{e.StackTrace}");
+            Debug.LogError($"[LaserPointer] UpdateDrag エラー: {e.Message}");
+        }
+    }
+
+    // スクロール方向を決定
+    private void DetermineScrollDirection()
+    {
+        if (activeScrollRect == null) return;
+
+        if (activeScrollRect.horizontal && !activeScrollRect.vertical)
+        {
+            activeScrollDirection = ScrollDirection.Horizontal;
+        }
+        else if (!activeScrollRect.horizontal && activeScrollRect.vertical)
+        {
+            activeScrollDirection = ScrollDirection.Vertical;
+        }
+        else if (activeScrollRect.horizontal && activeScrollRect.vertical)
+        {
+            // 両方向可能な場合は初期動きで判断するか、水平方向優先
+            activeScrollDirection = ScrollDirection.Both;
+        }
+        else
+        {
+            // 両方向無効の場合はデフォルトで水平方向
+            activeScrollDirection = ScrollDirection.Horizontal;
+        }
+    }
+
+    // ScrollRectのポジションを直接更新
+    private void UpdateScrollRectPosition(Vector2 dragDelta)
+    {
+        if (activeScrollRect == null) return;
+
+        // 現在の正規化されたポジション
+        Vector2 normalizedPosition = activeScrollRect.normalizedPosition;
+        
+        // ThumbnailCanvasの場合は特別処理
+        bool isThumbnailCanvas = hitCanvas != null && hitCanvas.name.Contains("Thumbnail");
+        
+        // スクロール方向に応じた移動量計算
+        switch (activeScrollDirection)
+        {
+            case ScrollDirection.Horizontal:
+                // ScrollRectは水平方向は右が0、左が1 という反転した値
+                normalizedPosition.x -= dragDelta.x * scrollSensitivity / activeScrollRect.content.rect.width;
+                
+                // ThumbnailCanvasの場合は強制的にスクロール感度を上げる
+                if (isThumbnailCanvas)
+                {
+                    normalizedPosition.x -= dragDelta.x * 0.01f; // 追加のスクロール
+                }
+                break;
+                
+            case ScrollDirection.Vertical:
+                // ScrollRectは垂直方向は下が0、上が1
+                normalizedPosition.y += dragDelta.y * scrollSensitivity / activeScrollRect.content.rect.height;
+                break;
+                
+            case ScrollDirection.Both:
+                // 両方向に移動
+                normalizedPosition.x -= dragDelta.x * scrollSensitivity / activeScrollRect.content.rect.width;
+                normalizedPosition.y += dragDelta.y * scrollSensitivity / activeScrollRect.content.rect.height;
+                break;
+        }
+
+        // 値を0-1の範囲に制限
+        normalizedPosition.x = Mathf.Clamp01(normalizedPosition.x);
+        normalizedPosition.y = Mathf.Clamp01(normalizedPosition.y);
+        
+        // 位置を更新
+        activeScrollRect.normalizedPosition = normalizedPosition;
+        
+        // デバッグ出力
+        if (Time.frameCount % 5 == 0 && isThumbnailCanvas)
+        {
+            Debug.LogError($"[LaserPointer] スクロール更新: Delta={dragDelta}, 新位置={normalizedPosition}");
         }
     }
 
@@ -756,7 +868,7 @@ public class VRLaserPointer : MonoBehaviour
         activeScrollRect = null;
 
         // 1. 指定されたThumbnailScrollRectを使用
-        if (thumbnailScrollRect != null)
+        if (thumbnailScrollRect != null && hitCanvas != null && hitCanvas.name.Contains("Thumbnail"))
         {
             activeScrollRect = thumbnailScrollRect;
             Debug.LogError($"[LaserPointer] 指定されたThumbnailScrollRectを使用: {thumbnailScrollRect.name}");
@@ -764,20 +876,15 @@ public class VRLaserPointer : MonoBehaviour
         }
         
         // 2. ドラッグ対象がThumbnailCanvasにある場合
-        if (draggedObject.name.Contains("Thumbnail") || 
-            (draggedObject.transform.parent != null && draggedObject.transform.parent.name.Contains("Thumbnail")))
+        if (hitCanvas != null && hitCanvas.name.Contains("Thumbnail"))
         {
             // ThumbnailCanvas内のScrollRectを検索
-            GameObject thumbnailCanvas = GameObject.Find("ThumbnailCanvas");
-            if (thumbnailCanvas != null)
+            ScrollRect sr = hitCanvas.GetComponentInChildren<ScrollRect>();
+            if (sr != null)
             {
-                ScrollRect sr = thumbnailCanvas.GetComponentInChildren<ScrollRect>();
-                if (sr != null)
-                {
-                    activeScrollRect = sr;
-                    Debug.LogError($"[LaserPointer] ThumbnailCanvas内のScrollRectを検出: {sr.name}");
-                    return;
-                }
+                activeScrollRect = sr;
+                Debug.LogError($"[LaserPointer] ThumbnailCanvas内のScrollRectを検出: {sr.name}");
+                return;
             }
         }
 
@@ -804,6 +911,26 @@ public class VRLaserPointer : MonoBehaviour
             }
             parent = parent.parent;
             searchDepth++;
+        }
+
+        // 4. 最後の手段として、特定の名前のオブジェクトを探す
+        if (draggedObject.name.Contains("Thumbnail") || 
+            (draggedObject.transform.parent != null && draggedObject.transform.parent.name.Contains("Thumbnail")))
+        {
+            GameObject[] allObjects = GameObject.FindObjectsOfType<GameObject>();
+            foreach (GameObject obj in allObjects)
+            {
+                if (obj.name.Contains("Scroll") || obj.name.Contains("Content"))
+                {
+                    ScrollRect sr = obj.GetComponent<ScrollRect>();
+                    if (sr != null)
+                    {
+                        activeScrollRect = sr;
+                        Debug.LogError($"[LaserPointer] 名前検索でScrollRectを検出: {sr.name}");
+                        return;
+                    }
+                }
+            }
         }
 
         Debug.LogWarning("[LaserPointer] ScrollRectが見つかりませんでした");
@@ -1217,7 +1344,7 @@ public class VRLaserPointer : MonoBehaviour
                 // ScrollRect用のドラッグ終了処理
                 if (activeScrollRect != null)
                 {
-                    activeScrollRect.OnEndDrag(cachedPointerData);
+                    activeScrollRect.StopMovement();
                     Debug.LogError($"[LaserPointer] ScrollRectのドラッグ終了: {activeScrollRect.name}");
                 }
                 else
@@ -1235,6 +1362,7 @@ public class VRLaserPointer : MonoBehaviour
                 draggedObject = null;
                 dragThresholdMet = false;
                 activeScrollRect = null;
+                hitCanvas = null;
 
                 // ドラッグ終了時、現在のターゲットがあればドットを表示
                 if (currentTarget != null && pointerDot != null)
