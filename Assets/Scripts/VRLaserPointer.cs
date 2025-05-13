@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 public class VRLaserPointer : MonoBehaviour
 {
@@ -29,6 +30,10 @@ public class VRLaserPointer : MonoBehaviour
 
     [Header("パネル可視性コントローラー")]
     [SerializeField] private PanelVisibilityController panelVisibilityController;
+
+    [Header("高度な設定")]
+    [SerializeField] private bool processAllCanvases = true; // すべてのCanvasを処理するかどうか
+    [SerializeField] private bool useClosestHit = true;      // 最も近いヒットを使用するかどうか
 
     // レーザー用のコンポーネント
     private LineRenderer lineRenderer;
@@ -59,6 +64,17 @@ public class VRLaserPointer : MonoBehaviour
     private GameObject draggedObject;
     private bool dragThresholdMet = false;
     private const float dragThreshold = 5f; // ドラッグ開始するための最小移動距離
+
+    // 複数ヒット管理用
+    private struct UIHitInfo
+    {
+        public float distance;
+        public GameObject target;
+        public Canvas canvas;
+        public Vector3 worldPosition;
+        public Vector2 screenPosition;
+    }
+    private List<UIHitInfo> uiHits = new List<UIHitInfo>();
 
     void Start()
     {
@@ -169,22 +185,7 @@ public class VRLaserPointer : MonoBehaviour
             }
 
             // CanvasListを初期化
-            if (targetCanvasList != null && targetCanvasList.Length > 0)
-            {
-                Debug.Log($"[LaserPointer] 対象Canvas数: {targetCanvasList.Length}");
-                foreach (var canvas in targetCanvasList)
-                {
-                    if (canvas != null)
-                    {
-                        Debug.Log($"[LaserPointer] Canvas: {canvas.name}");
-                    }
-                    else
-                    {
-                        Debug.LogWarning("[LaserPointer] Null canvas in targetCanvasList");
-                    }
-                }
-            }
-            else
+            if (targetCanvasList == null || targetCanvasList.Length == 0)
             {
                 Debug.LogWarning("[LaserPointer] targetCanvasListが設定されていないか空です");
                 
@@ -410,7 +411,11 @@ public class VRLaserPointer : MonoBehaviour
                 }
             }
 
-            Debug.Log($"[LaserPointer] 表示Canvas数: {visibleCanvasList.Count}");
+            // MapCanvasとThumbnailCanvasの両方が含まれているか確認
+            bool hasMapCanvas = visibleCanvasList.Any(c => c.name.Contains("MapCanvas"));
+            bool hasThumbnailCanvas = visibleCanvasList.Any(c => c.name.Contains("ThumbnailCanvas"));
+            
+            Debug.Log($"[LaserPointer] 表示Canvas数: {visibleCanvasList.Count}, MapCanvas: {hasMapCanvas}, ThumbnailCanvas: {hasThumbnailCanvas}");
         }
         catch (System.Exception e)
         {
@@ -498,6 +503,9 @@ public class VRLaserPointer : MonoBehaviour
             // 表示中のCanvasリストを更新
             UpdateVisibleCanvasList();
 
+            // UI要素のヒット情報をクリア
+            uiHits.Clear();
+
             // 物理オブジェクトとの交差判定
             bool hitPhysics = false;
             RaycastHit physicsHit = new RaycastHit();
@@ -533,16 +541,58 @@ public class VRLaserPointer : MonoBehaviour
 
                     try
                     {
-                        if (CheckUIRaycast(startPos, direction, canvas, ref hitDistance))
+                        UIHitInfo hitInfo;
+                        if (CheckUIRaycast(startPos, direction, canvas, out hitInfo) && hitInfo.target != null)
                         {
+                            uiHits.Add(hitInfo);
                             hitUI = true;
-                            Debug.Log($"[LaserPointer] UIヒット: Canvas={canvas.name}, Target={currentTarget?.name}");
-                            break;
+                            
+                            // すべてのCanvasを処理しない場合は最初のヒットで終了
+                            if (!processAllCanvases)
+                            {
+                                break;
+                            }
                         }
                     }
                     catch (System.Exception e)
                     {
                         Debug.LogError($"[LaserPointer] UI Raycast error on {canvas.name}: {e.Message}");
+                    }
+                }
+
+                // UIヒットの処理
+                if (hitUI && uiHits.Count > 0)
+                {
+                    // 最も近いヒットを使用するか、レイヤー順にソートするか
+                    if (useClosestHit)
+                    {
+                        // 距離でソートして最も近いものを選択
+                        uiHits.Sort((a, b) => a.distance.CompareTo(b.distance));
+                    }
+                    else
+                    {
+                        // Canvasのレイヤー順でソート（ソートはここでは行わない、リスト順を維持）
+                    }
+
+                    // 選択されたヒット情報を取得
+                    UIHitInfo selectedHit = uiHits[0];
+                    currentTarget = selectedHit.target;
+                    hitDistance = selectedHit.distance;
+
+                    // デバッグ出力
+                    Debug.Log($"[LaserPointer] UIヒット: Canvas={selectedHit.canvas.name}, Target={currentTarget?.name}, 距離={selectedHit.distance}");
+
+                    // ヒット位置にポインタードットを表示
+                    if (hitPoint != null && pointerDot != null && !isDragging)
+                    {
+                        hitPoint.position = selectedHit.worldPosition;
+                        pointerDot.SetActive(true);
+
+                        // トリガーが押されている場合はドットの色を変更
+                        if (dotRenderer != null)
+                        {
+                            dotRenderer.material.color = triggerPressed ? dotPressedColor : dotColor;
+                        }
                     }
                 }
             }
@@ -563,7 +613,8 @@ public class VRLaserPointer : MonoBehaviour
             {
                 if ((hitUI || (hitPhysics && physicsHit.distance < maxRayDistance)) && !isDragging)
                 {
-                    Vector3 hitPos = hitUI ? endPos : physicsHit.point;
+                    // UIヒットを優先
+                    Vector3 hitPos = hitUI ? (uiHits.Count > 0 ? uiHits[0].worldPosition : endPos) : physicsHit.point;
 
                     if (hitPoint != null)
                     {
@@ -585,6 +636,12 @@ public class VRLaserPointer : MonoBehaviour
                 {
                     pointerDot.SetActive(false);
                 }
+            }
+
+            // 通常のポインタEnter/Exit処理
+            if (currentTarget != lastTarget)
+            {
+                HandlePointerEnterExit(currentTarget, lastTarget);
             }
         }
         catch (System.Exception e)
@@ -630,6 +687,16 @@ public class VRLaserPointer : MonoBehaviour
                     if (scrollRect == null && draggedObject.transform.parent != null)
                     {
                         scrollRect = draggedObject.transform.parent.GetComponent<ScrollRect>();
+                        if (scrollRect == null)
+                        {
+                            // 親階層をたどってScrollRectを探す
+                            Transform parent = draggedObject.transform.parent;
+                            while (parent != null && scrollRect == null)
+                            {
+                                scrollRect = parent.GetComponent<ScrollRect>();
+                                parent = parent.parent;
+                            }
+                        }
                     }
 
                     if (scrollRect != null)
@@ -652,8 +719,13 @@ public class VRLaserPointer : MonoBehaviour
     }
 
     // 特定のCanvasとの交差判定
-    private bool CheckUIRaycast(Vector3 startPos, Vector3 direction, Canvas canvas, ref float hitDistance)
+    private bool CheckUIRaycast(Vector3 startPos, Vector3 direction, Canvas canvas, out UIHitInfo hitInfo)
     {
+        hitInfo = new UIHitInfo();
+        hitInfo.canvas = canvas;
+        hitInfo.distance = float.MaxValue;
+        hitInfo.target = null;
+        
         // NULLチェックを厳密に実施
         if (canvas == null)
         {
@@ -661,14 +733,12 @@ public class VRLaserPointer : MonoBehaviour
             return false;
         }
 
-        if (uiRaycaster == null)
+        // GraphicRaycasterを取得
+        GraphicRaycaster canvasRaycaster = canvas.GetComponent<GraphicRaycaster>();
+        if (canvasRaycaster == null)
         {
-            uiRaycaster = canvas.GetComponent<GraphicRaycaster>();
-            if (uiRaycaster == null)
-            {
-                Debug.LogWarning("[LaserPointer] uiRaycaster is null and could not be found on canvas");
-                return false;
-            }
+            Debug.LogWarning($"[LaserPointer] {canvas.name} にGraphicRaycasterがありません");
+            return false;
         }
 
         if (eventSystem == null)
@@ -700,7 +770,7 @@ public class VRLaserPointer : MonoBehaviour
             Plane canvasPlane = new Plane(canvasNormal, canvasRect.position);
             float rayDistance;
 
-            if (canvasPlane.Raycast(ray, out rayDistance) && rayDistance < hitDistance)
+            if (canvasPlane.Raycast(ray, out rayDistance))
             {
                 Vector3 worldPos = startPos + direction * rayDistance;
 
@@ -746,7 +816,7 @@ public class VRLaserPointer : MonoBehaviour
                 List<RaycastResult> results = new List<RaycastResult>();
                 try
                 {
-                    uiRaycaster.Raycast(pointerData, results);
+                    canvasRaycaster.Raycast(pointerData, results);
                 }
                 catch (System.Exception e)
                 {
@@ -784,36 +854,11 @@ public class VRLaserPointer : MonoBehaviour
                         }
                     }
 
-                    hitDistance = rayDistance;
-
-                    // レーザーの終点位置を設定
-                    float visualDistance = Mathf.Min(hitDistance, maxVisualDistance);
-                    Vector3 visualEndPoint = startPos + direction * visualDistance;
-
-                    // レーザーの描画を更新
-                    if (lineRenderer != null)
-                    {
-                        lineRenderer.SetPosition(1, visualEndPoint);
-                    }
-
-                    // ヒット位置にドットを表示
-                    if (hitPoint != null && pointerDot != null)
-                    {
-                        hitPoint.position = worldPos;
-                        pointerDot.SetActive(!isDragging); // ドラッグ中はドットを非表示
-
-                        // トリガーが押されている場合はドットの色を変更
-                        if (dotRenderer != null)
-                        {
-                            dotRenderer.material.color = triggerPressed ? dotPressedColor : dotColor;
-                        }
-                    }
-
-                    // UIターゲットを保存
-                    currentTarget = targetObject;
-
-                    // 通常のポインタEnter/Exit処理
-                    HandlePointerEnterExit(currentTarget, lastTarget);
+                    // ヒット情報を設定
+                    hitInfo.distance = rayDistance;
+                    hitInfo.target = targetObject;
+                    hitInfo.worldPosition = worldPos;
+                    hitInfo.screenPosition = screenPoint;
 
                     return true; // UIとの交差あり
                 }
