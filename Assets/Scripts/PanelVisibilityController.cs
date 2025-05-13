@@ -16,6 +16,9 @@ public class PanelVisibilityController : MonoBehaviour
     [Header("パネルアクティブ設定")]
     [SerializeField] private bool isPanelActive = true; // パネルアクティブフラグ（初期値true）
 
+    [Header("ThumbnailCanvas設定")]
+    [SerializeField] private GameObject thumbnailCanvas; // サムネイルキャンバス
+
     private Dictionary<GameObject, CanvasGroup> panelCanvasGroups = new Dictionary<GameObject, CanvasGroup>();
     private bool isInViewRange = true;    // 視野角内にいるかどうか
     private bool isFading = false;        // フェード中かどうか
@@ -66,6 +69,29 @@ public class PanelVisibilityController : MonoBehaviour
             else
             {
                 Debug.LogError("[PanelVisibilityController] カメラの参照を取得できませんでした");
+            }
+
+            // ThumbnailCanvasの検索（設定されていない場合）
+            if (thumbnailCanvas == null)
+            {
+                thumbnailCanvas = GameObject.Find("ThumbnailCanvas");
+                if (thumbnailCanvas != null)
+                {
+                    Debug.Log("[PanelVisibilityController] ThumbnailCanvasを自動検出しました");
+                    
+                    // リストにまだ含まれていなければ追加
+                    if (!controlledPanels.Contains(thumbnailCanvas))
+                    {
+                        controlledPanels.Add(thumbnailCanvas);
+                        Debug.Log("[PanelVisibilityController] ThumbnailCanvasをコントロール対象に追加しました");
+                    }
+                }
+            }
+            else if (!controlledPanels.Contains(thumbnailCanvas))
+            {
+                // 既に設定されていたが、リストに含まれていない場合は追加
+                controlledPanels.Add(thumbnailCanvas);
+                Debug.Log("[PanelVisibilityController] 指定されたThumbnailCanvasをコントロール対象に追加しました");
             }
 
             // パネルの初期化
@@ -529,6 +555,25 @@ public class PanelVisibilityController : MonoBehaviour
         else
         {
             Debug.LogError("[PanelVisibilityController] パネルアクティブ化に伴うフェードイン開始");
+        }
+    }
+
+    // ThumbnailCanvasを設定するメソッド
+    public void SetThumbnailCanvas(GameObject canvas)
+    {
+        if (canvas == null)
+        {
+            Debug.LogWarning("[PanelVisibilityController] SetThumbnailCanvas: canvasがnullです");
+            return;
+        }
+
+        thumbnailCanvas = canvas;
+        
+        // 制御対象に追加
+        if (!controlledPanels.Contains(canvas))
+        {
+            AddPanel(canvas);
+            Debug.Log($"[PanelVisibilityController] ThumbnailCanvasを設定: {canvas.name}");
         }
     }
 
