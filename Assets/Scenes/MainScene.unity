@@ -695,6 +695,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 581576210}
     m_Modifications:
     - target: {fileID: 318003368210974287, guid: 7165846fcae3ad14b838a69b9c32855b, type: 3}
+      propertyPath: dotScale
+      value: 0.01
+      objectReference: {fileID: 0}
+    - target: {fileID: 318003368210974287, guid: 7165846fcae3ad14b838a69b9c32855b, type: 3}
       propertyPath: rayOrigin
       value: 
       objectReference: {fileID: 581576210}
@@ -2224,6 +2228,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1669445670}
     m_Modifications:
+    - target: {fileID: 318003368210974287, guid: 7165846fcae3ad14b838a69b9c32855b, type: 3}
+      propertyPath: dotScale
+      value: 0.01
+      objectReference: {fileID: 0}
     - target: {fileID: 318003368210974287, guid: 7165846fcae3ad14b838a69b9c32855b, type: 3}
       propertyPath: rayOrigin
       value: 
