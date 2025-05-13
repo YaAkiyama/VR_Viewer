@@ -48,8 +48,11 @@ public class VRLaserPointer : MonoBehaviour
     private List<Canvas> visibleCanvasList = new List<Canvas>();
 
     // Aボタン関連の変数
+    private static readonly object _buttonLock = new object(); // ロックオブジェクト
     private bool aButtonProcessing = false; // Aボタン処理中フラグ
     private float aButtonDebounceTime = 0.5f; // デバウンス時間を長めに設定
+    // 前回のボタン押下時間を記録
+    private float lastAButtonTime = 0f;
 
     // ドラッグ関連の変数
     private Vector2 dragStartPosition;
@@ -1081,54 +1084,70 @@ public class VRLaserPointer : MonoBehaviour
 
     private void OnAButtonPressed(InputAction.CallbackContext context)
     {
-        try
+        // ロックを使用して同時に複数のスレッドがこのコードを実行できないようにする
+        lock (_buttonLock)
         {
-            // 処理中フラグをチェック - すでに処理中なら無視
-            if (aButtonProcessing)
+            try
             {
-                Debug.LogWarning("[LaserPointer] Aボタン処理中のため無視します");
-                return;
-            }
-
-            // 処理中フラグを立てる
-            aButtonProcessing = true;
-            
-            // デバッグログ - 呼び出し情報を詳細に記録
-            Debug.LogError($"[LaserPointer] Aボタンイベント発生: Time={Time.time}, Phase={context.phase}, Control={context.control?.name}");
-
-            if (panelVisibilityController == null)
-            {
-                Debug.LogError("[LaserPointer] PanelVisibilityController is null");
-                panelVisibilityController = FindFirstObjectByType<PanelVisibilityController>();
-                if (panelVisibilityController == null)
+                // コントロール名とイベント情報を確認（デバッグ用）
+                var control = context.control?.name;
+                var time = context.time;
+                
+                // 重複イベントのチェック - 同じボタンが短時間で連続して押された場合を防止
+                if (Time.time - lastAButtonTime < 0.3f)
                 {
-                    Debug.LogError("[LaserPointer] PanelVisibilityControllerが見つかりません");
-                    aButtonProcessing = false; // フラグをリセット
+                    Debug.LogWarning($"[LaserPointer] Aボタン連続押下のため無視: Control={control}, Time={time}, 経過={Time.time - lastAButtonTime}秒");
                     return;
                 }
+                
+                // 処理中フラグのチェック
+                if (aButtonProcessing)
+                {
+                    Debug.LogWarning($"[LaserPointer] Aボタン処理中のため無視: Control={control}, Time={time}");
+                    return;
+                }
+                
+                // 最初に処理中フラグを立てる（重要:これによりイベント重複を防止）
+                aButtonProcessing = true;
+                lastAButtonTime = Time.time;
+                
+                Debug.LogError($"[LaserPointer] Aボタンイベント発生: Time={time}, Phase={context.phase}, Control={control}");
+
+                if (panelVisibilityController == null)
+                {
+                    Debug.LogError("[LaserPointer] PanelVisibilityController is null");
+                    panelVisibilityController = FindFirstObjectByType<PanelVisibilityController>();
+                    if (panelVisibilityController == null)
+                    {
+                        Debug.LogError("[LaserPointer] PanelVisibilityControllerが見つかりません");
+                        aButtonProcessing = false; // フラグをリセット
+                        return;
+                    }
+                }
+
+                // 現在の状態を詳細に記録
+                bool isInViewRange = panelVisibilityController.IsInViewRange();
+                bool isPanelActive = panelVisibilityController.IsPanelActive;
+                bool isFading = panelVisibilityController.IsFading();
+
+                Debug.LogError($"[LaserPointer] Aボタン押下前の状態: 視野角内={isInViewRange}, パネルアクティブ={isPanelActive}, フェード中={isFading}");
+
+                // パネルアクティブ状態を切り替える
+                panelVisibilityController.TogglePanelActive();
+
+                // 切替後の状態を記録
+                isPanelActive = panelVisibilityController.IsPanelActive;
+                Debug.LogError($"[LaserPointer] パネルアクティブ状態切替後: {isPanelActive}");
+
+                // 一定時間後にフラグをリセットするコルーチンを開始
+                StartCoroutine(ResetAButtonProcessing());
             }
-
-            // 現在の状態を詳細に記録
-            bool isInViewRange = panelVisibilityController.IsInViewRange();
-            bool isPanelActive = panelVisibilityController.IsPanelActive;
-            bool isFading = panelVisibilityController.IsFading();
-
-            Debug.LogError($"[LaserPointer] Aボタン押下前の状態: 視野角内={isInViewRange}, パネルアクティブ={isPanelActive}, フェード中={isFading}");
-
-            // パネルアクティブ状態を切り替える
-            panelVisibilityController.TogglePanelActive();
-
-            // 切替後の状態を記録
-            isPanelActive = panelVisibilityController.IsPanelActive;
-            Debug.LogError($"[LaserPointer] パネルアクティブ状態切替後: {isPanelActive}");
-
-            // 一定時間後にフラグをリセットするコルーチンを開始
-            StartCoroutine(ResetAButtonProcessing());
-        }
-        catch (System.Exception e)
-        {
-            Debug.LogError($"[LaserPointer] Aボタン処理中にエラー: {e.Message}\n{e.StackTrace}");
-            aButtonProcessing = false; // エラー時もフラグをリセット
+            catch (System.Exception e)
+            {
+                Debug.LogError($"[LaserPointer] Aボタン処理中にエラー: {e.Message}\n{e.StackTrace}");
+                // エラー時はフラグをリセット
+                aButtonProcessing = false;
+            }
         }
     }
 
