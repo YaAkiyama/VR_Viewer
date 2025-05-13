@@ -13,6 +13,9 @@ public class PanelVisibilityController : MonoBehaviour
     [SerializeField] private float fadeSpeed = 5f;
     [SerializeField][Range(0.1f, 1f)] private float maxAlpha = 1f; // 最大透過度設定
 
+    [Header("パネルアクティブ設定")]
+    [SerializeField] private bool isPanelActive = true; // パネルアクティブフラグ（初期値true）
+
     private Dictionary<GameObject, CanvasGroup> panelCanvasGroups = new Dictionary<GameObject, CanvasGroup>();
     private bool isInViewRange = true;    // 視野角内にいるかどうか
     private bool isFading = false;        // フェード中かどうか
@@ -21,6 +24,7 @@ public class PanelVisibilityController : MonoBehaviour
     // プロパティを公開
     public float MinViewAngleX => minViewAngleX;
     public float MaxViewAngleX => maxViewAngleX;
+    public bool IsPanelActive => isPanelActive; // パネルアクティブ状態の取得プロパティ
 
     void Start()
     {
@@ -75,10 +79,10 @@ public class PanelVisibilityController : MonoBehaviour
 
                 // 初期状態は表示（maxAlphaを使用）
                 canvasGroup.alpha = maxAlpha;
-                canvasGroup.interactable = true;
-                canvasGroup.blocksRaycasts = true;
+                canvasGroup.interactable = isPanelActive; // パネルアクティブ状態に合わせて設定
+                canvasGroup.blocksRaycasts = isPanelActive; // パネルアクティブ状態に合わせて設定
 
-                Debug.Log($"[PanelVisibilityController] パネル初期化: {panel.name}, Alpha={maxAlpha}");
+                Debug.Log($"[PanelVisibilityController] パネル初期化: {panel.name}, Alpha={maxAlpha}, Interactable={isPanelActive}");
             }
 
             // 初期状態を設定: 視野角内として初期化
@@ -116,6 +120,16 @@ public class PanelVisibilityController : MonoBehaviour
                 }
             }
 
+            // パネルがアクティブでない場合は視野角チェックをスキップ
+            if (!isPanelActive)
+            {
+                // フェード中は何もしない（フェード完了まで待つ）
+                if (!isFading)
+                {
+                    return;
+                }
+            }
+
             // カメラの前方向ベクトルから角度を計算
             float cameraXRotation = cameraTransform.eulerAngles.x;
 
@@ -129,7 +143,14 @@ public class PanelVisibilityController : MonoBehaviour
                 Debug.Log($"[PanelVisibilityController] 状態: カメラX角度={cameraXRotation}, " +
                           $"視野角範囲={minViewAngleX}～{maxViewAngleX}, " +
                           $"視野角内={isInViewRange}, " +
-                          $"フェード中={isFading}");
+                          $"フェード中={isFading}, " + 
+                          $"パネルアクティブ={isPanelActive}");
+            }
+
+            // パネルがアクティブでない場合は視野角による表示制御をスキップ
+            if (!isPanelActive)
+            {
+                return;
             }
 
             // 視野角範囲内かどうかをチェック
@@ -162,6 +183,12 @@ public class PanelVisibilityController : MonoBehaviour
     // パネルの現在のアルファ値と目標値を確認し、フェードが必要かチェック
     private bool NeedsFade(bool inViewRange)
     {
+        // パネルがアクティブでない場合はフェード不要
+        if (!isPanelActive)
+        {
+            return false;
+        }
+
         float targetAlpha = inViewRange ? maxAlpha : 0f;
 
         foreach (var canvasGroup in panelCanvasGroups.Values)
@@ -198,14 +225,14 @@ public class PanelVisibilityController : MonoBehaviour
 
         float elapsedTime = 0f;
         float duration = 1f / fadeSpeed; // フェード完了までの時間
+        
+        // パネルアクティブ状態と視野角状態に基づいて目標アルファ値を決定
+        float targetAlpha = isPanelActive && isInViewRange ? maxAlpha : 0f;
 
         while (elapsedTime < duration)
         {
             elapsedTime += Time.deltaTime;
             float t = Mathf.Clamp01(elapsedTime / duration);
-
-            // 現在の視野角状態に基づいて目標の透過度を動的に決定
-            float targetAlpha = isInViewRange ? maxAlpha : 0f;
 
             // 各パネルのフェード処理
             foreach (var canvasGroup in panelCanvasGroups.Values)
@@ -215,20 +242,29 @@ public class PanelVisibilityController : MonoBehaviour
                     // 開始アルファ値からターゲットアルファ値に補間
                     canvasGroup.alpha = Mathf.Lerp(startAlphas[canvasGroup], targetAlpha, t);
 
-                    // インタラクションの設定（視野角内の場合のみインタラクション可能）
-                    // 完全に透明になる前にインタラクションを無効にするため、閾値を0.1としている
-                    canvasGroup.interactable = canvasGroup.alpha > 0.1f;
-                    canvasGroup.blocksRaycasts = canvasGroup.alpha > 0.1f;
+                    // インタラクションの設定（パネルアクティブかつ視野角内の場合のみインタラクション可能）
+                    bool shouldInteract = isPanelActive && (canvasGroup.alpha > 0.1f);
+                    canvasGroup.interactable = shouldInteract;
+                    canvasGroup.blocksRaycasts = shouldInteract;
                 }
             }
 
             yield return null;
 
-            // フェード中に視野角状態が変わった場合、フェードをリセット
-            if ((isInViewRange && targetAlpha != maxAlpha) || (!isInViewRange && targetAlpha != 0f))
+            // フェード中にパネルアクティブ状態が変わった場合、ターゲットアルファを再設定
+            float newTargetAlpha = isPanelActive && isInViewRange ? maxAlpha : 0f;
+            if (newTargetAlpha != targetAlpha)
             {
-                Debug.Log("[PanelVisibilityController] フェード中に視野角状態が変化したため、フェードをリセット");
+                // ただし、パネルが非アクティブになった場合は必ずフェードアウトに向かう
+                if (!isPanelActive)
+                {
+                    newTargetAlpha = 0f;
+                }
 
+                Debug.Log($"[PanelVisibilityController] フェード中に状態が変化: パネルアクティブ={isPanelActive}, 視野角内={isInViewRange}, 新ターゲットAlpha={newTargetAlpha}");
+                
+                targetAlpha = newTargetAlpha;
+                
                 // 現在の値を開始値として記録し直す
                 startAlphas.Clear();
                 foreach (var canvasGroup in panelCanvasGroups.Values)
@@ -245,26 +281,44 @@ public class PanelVisibilityController : MonoBehaviour
         }
 
         // 最終状態を確実に設定
-        float finalAlpha = isInViewRange ? maxAlpha : 0f;
+        bool finalInteractable = isPanelActive && (targetAlpha > 0.1f);
         foreach (var canvasGroup in panelCanvasGroups.Values)
         {
             if (canvasGroup != null)
             {
-                canvasGroup.alpha = finalAlpha;
-                canvasGroup.interactable = isInViewRange;
-                canvasGroup.blocksRaycasts = isInViewRange;
+                canvasGroup.alpha = targetAlpha;
+                canvasGroup.interactable = finalInteractable;
+                canvasGroup.blocksRaycasts = finalInteractable;
             }
         }
 
-        Debug.Log($"[PanelVisibilityController] フェード完了: Alpha={finalAlpha}");
+        Debug.Log($"[PanelVisibilityController] フェード完了: Alpha={targetAlpha}, Interactable={finalInteractable}");
         isFading = false;
     }
 
-    // Aボタン用のメソッド（後で使用予定）
-    public void ToggleForcedVisibility()
+    // パネルアクティブ状態を切り替えるメソッド（A ボタン用）
+    public void TogglePanelActive()
     {
-        // 現在は使用しないが、後の実装のために残しておく
-        Debug.Log("[PanelVisibilityController] ToggleForcedVisibility 呼び出し（現在は使用されていません）");
+        // 現在の値を反転
+        bool previousState = isPanelActive;
+        isPanelActive = !isPanelActive;
+        
+        Debug.Log($"[PanelVisibilityController] パネルアクティブ状態切替: {previousState} -> {isPanelActive}");
+        
+        // 非アクティブに変更された場合、強制的にフェードアウト
+        if (previousState && !isPanelActive)
+        {
+            // フェード処理が既に実行中なら停止
+            if (fadeCoroutine != null)
+            {
+                StopCoroutine(fadeCoroutine);
+                isFading = false;
+            }
+            
+            // 非アクティブ化に伴うフェードアウトを開始
+            fadeCoroutine = StartCoroutine(DynamicFade());
+            Debug.Log("[PanelVisibilityController] パネル非アクティブ化に伴うフェードアウト開始");
+        }
     }
 
     // パネルを追加
@@ -297,11 +351,12 @@ public class PanelVisibilityController : MonoBehaviour
             panelCanvasGroups[panel] = canvasGroup;
 
             // 現在の視野角状態に合わせて表示/非表示を設定
-            canvasGroup.alpha = isInViewRange ? maxAlpha : 0f;
-            canvasGroup.interactable = isInViewRange;
-            canvasGroup.blocksRaycasts = isInViewRange;
+            bool shouldBeVisible = isPanelActive && isInViewRange;
+            canvasGroup.alpha = shouldBeVisible ? maxAlpha : 0f;
+            canvasGroup.interactable = shouldBeVisible;
+            canvasGroup.blocksRaycasts = shouldBeVisible;
 
-            Debug.Log($"[PanelVisibilityController] パネル設定完了: {panel.name}, Alpha={canvasGroup.alpha}");
+            Debug.Log($"[PanelVisibilityController] パネル設定完了: {panel.name}, Alpha={canvasGroup.alpha}, Interactable={shouldBeVisible}");
         }
         catch (System.Exception e)
         {
@@ -388,17 +443,46 @@ public class PanelVisibilityController : MonoBehaviour
         maxAlpha = Mathf.Clamp01(alpha);
         Debug.Log($"[PanelVisibilityController] 最大透過度設定: {maxAlpha}");
     }
-    // 互換性のために残す空実装メソッド
-    public bool IsForcedState()
+
+    // パネルアクティブ状態を設定するメソッド
+    public void SetPanelActive(bool active)
     {
-        // 常にfalse（強制状態なし）を返す
-        return false;
+        if (isPanelActive != active)
+        {
+            bool previousState = isPanelActive;
+            isPanelActive = active;
+            
+            Debug.Log($"[PanelVisibilityController] パネルアクティブ状態設定: {previousState} -> {isPanelActive}");
+            
+            // 非アクティブに変更された場合、強制的にフェードアウト
+            if (previousState && !isPanelActive)
+            {
+                // フェード処理が既に実行中なら停止
+                if (fadeCoroutine != null)
+                {
+                    StopCoroutine(fadeCoroutine);
+                    isFading = false;
+                }
+                
+                // 非アクティブ化に伴うフェードアウトを開始
+                fadeCoroutine = StartCoroutine(DynamicFade());
+                Debug.Log("[PanelVisibilityController] パネル非アクティブ化に伴うフェードアウト開始");
+            }
+        }
     }
 
-    // 互換性のために残す空実装メソッド
+    // 互換性のために残す - 強制状態かどうかを返すメソッド
+    public bool IsForcedState()
+    {
+        // パネルアクティブがfalseの場合は強制的に非表示状態
+        return !isPanelActive;
+    }
+
+    // 互換性のために残す - 強制的に表示されているかを返すメソッド
     public bool IsForcedVisible()
     {
-        // 視野角内にいる場合と同じ状態を返す
-        return isInViewRange;
+        // パネルアクティブがfalseの場合は強制的に非表示
+        // パネルアクティブがtrueの場合は視野角内にいるかどうかで判断
+        return isPanelActive && isInViewRange;
     }
 }
