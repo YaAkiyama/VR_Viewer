@@ -6,6 +6,7 @@ using UnityEngine;
 public class PanelVisibilityControllerEditor : Editor
 {
     private GameObject newPanel;
+    private GameObject thumbnailCanvas;
 
     public override void OnInspectorGUI()
     {
@@ -42,6 +43,60 @@ public class PanelVisibilityControllerEditor : Editor
         }
 
         EditorGUILayout.EndHorizontal();
+
+        // サムネイルキャンバスの設定
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("サムネイルキャンバス設定", EditorStyles.boldLabel);
+
+        thumbnailCanvas = EditorGUILayout.ObjectField("サムネイルキャンバス", thumbnailCanvas, typeof(GameObject), true) as GameObject;
+
+        if (GUILayout.Button("サムネイルキャンバスを設定"))
+        {
+            if (thumbnailCanvas != null)
+            {
+                SerializedProperty thumbnailCanvasProp = serializedObject.FindProperty("thumbnailCanvas");
+                thumbnailCanvasProp.objectReferenceValue = thumbnailCanvas;
+                serializedObject.ApplyModifiedProperties();
+                
+                // 再生中の場合はコントローラーにも反映
+                if (Application.isPlaying)
+                {
+                    controller.SetThumbnailCanvas(thumbnailCanvas);
+                }
+                
+                EditorUtility.SetDirty(target);
+            }
+            else
+            {
+                EditorUtility.DisplayDialog("エラー", "サムネイルキャンバスを選択してください", "OK");
+            }
+        }
+
+        if (GUILayout.Button("シーンからサムネイルキャンバスを自動検出"))
+        {
+            GameObject foundCanvas = GameObject.Find("ThumbnailCanvas");
+            if (foundCanvas != null)
+            {
+                thumbnailCanvas = foundCanvas;
+                
+                SerializedProperty thumbnailCanvasProp = serializedObject.FindProperty("thumbnailCanvas");
+                thumbnailCanvasProp.objectReferenceValue = thumbnailCanvas;
+                serializedObject.ApplyModifiedProperties();
+                
+                // 再生中の場合はコントローラーにも反映
+                if (Application.isPlaying)
+                {
+                    controller.SetThumbnailCanvas(thumbnailCanvas);
+                }
+                
+                EditorUtility.SetDirty(target);
+                EditorUtility.DisplayDialog("情報", "サムネイルキャンバスを自動検出しました", "OK");
+            }
+            else
+            {
+                EditorUtility.DisplayDialog("エラー", "シーン内に「ThumbnailCanvas」という名前のGameObjectが見つかりませんでした", "OK");
+            }
+        }
 
         // パネルアクティブ状態の制御を追加
         EditorGUILayout.Space();
