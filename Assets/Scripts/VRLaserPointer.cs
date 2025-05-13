@@ -187,6 +187,27 @@ public class VRLaserPointer : MonoBehaviour
             else
             {
                 Debug.LogWarning("[LaserPointer] targetCanvasListが設定されていないか空です");
+                
+                // シーン内のCanvasを自動検出して追加
+                Canvas[] canvases = FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+                if (canvases.Length > 0)
+                {
+                    List<Canvas> validCanvases = new List<Canvas>();
+                    foreach (var canvas in canvases)
+                    {
+                        if (canvas.renderMode == RenderMode.WorldSpace)
+                        {
+                            validCanvases.Add(canvas);
+                            Debug.Log($"[LaserPointer] WorldSpace Canvasを自動検出: {canvas.name}");
+                        }
+                    }
+                    
+                    if (validCanvases.Count > 0)
+                    {
+                        targetCanvasList = validCanvases.ToArray();
+                        Debug.Log($"[LaserPointer] 自動検出したCanvas数: {targetCanvasList.Length}");
+                    }
+                }
             }
 
             UpdateVisibleCanvasList();
@@ -642,8 +663,12 @@ public class VRLaserPointer : MonoBehaviour
 
         if (uiRaycaster == null)
         {
-            Debug.LogWarning("[LaserPointer] uiRaycaster is null");
-            return false;
+            uiRaycaster = canvas.GetComponent<GraphicRaycaster>();
+            if (uiRaycaster == null)
+            {
+                Debug.LogWarning("[LaserPointer] uiRaycaster is null and could not be found on canvas");
+                return false;
+            }
         }
 
         if (eventSystem == null)
