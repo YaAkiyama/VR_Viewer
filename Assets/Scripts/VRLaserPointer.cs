@@ -1160,4 +1160,71 @@ public class VRLaserPointer : MonoBehaviour
         aButtonProcessing = false;
         Debug.Log("[LaserPointer] Aボタン処理フラグをリセットしました");
     }
+
+    // Canvasを追加 (ThumbnailCanvasなどを追加するため)
+    public void AddTargetCanvas(Canvas canvas)
+    {
+        if (canvas == null) return;
+
+        // 既に存在するか確認
+        foreach (var existingCanvas in targetCanvasList)
+        {
+            if (existingCanvas == canvas) return;
+        }
+
+        // 新しい配列を作成して追加
+        Canvas[] newList = new Canvas[targetCanvasList.Length + 1];
+        for (int i = 0; i < targetCanvasList.Length; i++)
+        {
+            newList[i] = targetCanvasList[i];
+        }
+        newList[targetCanvasList.Length] = canvas;
+        
+        targetCanvasList = newList;
+        Debug.Log($"[LaserPointer] ターゲットCanvasに追加: {canvas.name}");
+        
+        // 表示Canvasリストを更新
+        UpdateVisibleCanvasList();
+    }
+    
+    // Canvasを削除
+    public void RemoveTargetCanvas(Canvas canvas)
+    {
+        if (canvas == null) return;
+        
+        // Canvasが存在するか確認
+        bool found = false;
+        int foundIndex = -1;
+        
+        for (int i = 0; i < targetCanvasList.Length; i++)
+        {
+            if (targetCanvasList[i] == canvas)
+            {
+                found = true;
+                foundIndex = i;
+                break;
+            }
+        }
+        
+        if (!found) return;
+        
+        // 新しい配列を作成して削除対象を除外
+        Canvas[] newList = new Canvas[targetCanvasList.Length - 1];
+        int newIndex = 0;
+        
+        for (int i = 0; i < targetCanvasList.Length; i++)
+        {
+            if (i != foundIndex)
+            {
+                newList[newIndex] = targetCanvasList[i];
+                newIndex++;
+            }
+        }
+        
+        targetCanvasList = newList;
+        Debug.Log($"[LaserPointer] ターゲットCanvasから削除: {canvas.name}");
+        
+        // 表示Canvasリストを更新
+        UpdateVisibleCanvasList();
+    }
 }
