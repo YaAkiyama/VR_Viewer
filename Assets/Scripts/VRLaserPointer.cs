@@ -6,51 +6,56 @@ using System.Collections.Generic;
 
 public class VRLaserPointer : MonoBehaviour
 {
-    [Header("ƒŒ[ƒU[İ’è")]
-    [SerializeField] private float maxRayDistance = 100f;   // ƒŒ[ƒU[‚ÌÅ‘åŒŸo‹——£
-    [SerializeField] private float maxVisualDistance = 5f;  // ‹Šo“I‚ÈƒŒ[ƒU[‚Ì’·‚³
-    [SerializeField] private float rayWidth = 0.01f;        // ƒŒ[ƒU[‚Ì•
-    [SerializeField] private Color rayColor = new Color(0.0f, 0.5f, 1.0f, 0.5f); // ƒŒ[ƒU[‚ÌF
+    [Header("ãƒ¬ãƒ¼ã‚¶ãƒ¼è¨­å®š")]
+    [SerializeField] private float maxRayDistance = 100f;   // ãƒ¬ãƒ¼ã‚¶ãƒ¼ã®æœ€å¤§æ¤œå‡ºè·é›¢
+    [SerializeField] private float maxVisualDistance = 5f;  // è¦–è¦šçš„ãªãƒ¬ãƒ¼ã‚¶ãƒ¼ã®é•·ã•
+    [SerializeField] private float rayWidth = 0.01f;        // ãƒ¬ãƒ¼ã‚¶ãƒ¼ã®å¹…
+    [SerializeField] private Color rayColor = new Color(0.0f, 0.5f, 1.0f, 0.5f); // ãƒ¬ãƒ¼ã‚¶ãƒ¼ã®è‰²
 
-    [Header("ƒ|ƒCƒ“ƒ^[ƒhƒbƒgİ’è")]
-    [SerializeField] private float dotScale = 0.02f;        // ƒ|ƒCƒ“ƒ^[ƒhƒbƒg‚ÌƒXƒP[ƒ‹
-    [SerializeField] private Color dotColor = Color.white;  // ’Êí‚Ìƒhƒbƒg‚ÌF
-    [SerializeField] private Color dotPressedColor = Color.red; // ‰Ÿ‰º‚Ìƒhƒbƒg‚ÌF
+    [Header("ãƒã‚¤ãƒ³ã‚¿ãƒ¼ãƒ‰ãƒƒãƒˆè¨­å®š")]
+    [SerializeField] private float dotScale = 0.02f;        // ãƒã‚¤ãƒ³ã‚¿ãƒ¼ãƒ‰ãƒƒãƒˆã®ã‚¹ã‚±ãƒ¼ãƒ«
+    [SerializeField] private Color dotColor = Color.white;  // é€šå¸¸æ™‚ã®ãƒ‰ãƒƒãƒˆã®è‰²
+    [SerializeField] private Color dotPressedColor = Color.red; // æŠ¼ä¸‹æ™‚ã®ãƒ‰ãƒƒãƒˆã®è‰²
 
-    [Header("“ü—Íİ’è")]
-    [SerializeField] private InputActionReference triggerAction; // ƒgƒŠƒK[ƒ{ƒ^ƒ“
-    [SerializeField] private InputActionReference aButtonAction; // Aƒ{ƒ^ƒ“
+    [Header("å…¥åŠ›è¨­å®š")]
+    [SerializeField] private InputActionReference triggerAction; // ãƒˆãƒªã‚¬ãƒ¼ãƒœã‚¿ãƒ³
+    [SerializeField] private InputActionReference aButtonAction; // Aãƒœã‚¿ãƒ³
 
-    [Header("UIİ’è")]
-    [SerializeField] private GraphicRaycaster uiRaycaster; // UIƒŒƒCƒLƒƒƒXƒ^[
-    [SerializeField] private EventSystem eventSystem;      // ƒCƒxƒ“ƒgƒVƒXƒeƒ€
-    [SerializeField] private Canvas[] targetCanvasList;    // ‘ÎÛ‚ÌCanvasˆê——
+    [Header("UIè¨­å®š")]
+    [SerializeField] private GraphicRaycaster uiRaycaster; // UIãƒ¬ã‚¤ã‚­ãƒ£ã‚¹ã‚¿ãƒ¼
+    [SerializeField] private EventSystem eventSystem;      // ã‚¤ãƒ™ãƒ³ãƒˆã‚·ã‚¹ãƒ†ãƒ 
+    [SerializeField] private Canvas[] targetCanvasList;    // å¯¾è±¡ã®Canvasä¸€è¦§
 
-    [Header("ƒpƒlƒ‹‰Â‹«ƒRƒ“ƒgƒ[ƒ‰[")]
+    [Header("ãƒ‘ãƒãƒ«å¯è¦–æ€§ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ©ãƒ¼")]
     [SerializeField] private PanelVisibilityController panelVisibilityController;
 
-    // ƒŒ[ƒU[—p‚ÌƒRƒ“ƒ|[ƒlƒ“ƒg
+    // ãƒ¬ãƒ¼ã‚¶ãƒ¼ç”¨ã®ã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆ
     private LineRenderer lineRenderer;
     private GameObject pointerDot;
     private Transform hitPoint;
     private Renderer dotRenderer;
 
-    // UI—v‘f‚Æ‚Ì‘ŠŒİì—p—p
+    // UIè¦ç´ ã¨ã®ç›¸äº’ä½œç”¨ç”¨
     private PointerEventData pointerData;
     private PointerEventData cachedPointerData;
     private GameObject currentTarget;
     private GameObject lastTarget;
 
-    // ó‘ÔŠÇ—
+    // çŠ¶æ…‹ç®¡ç†
     private bool triggerPressed = false;
     private bool isDragging = false;
     private List<Canvas> visibleCanvasList = new List<Canvas>();
 
-    // ƒhƒ‰ƒbƒOŠÖ˜A‚Ì•Ï”
+    // Aãƒœã‚¿ãƒ³é–¢é€£ã®å¤‰æ•°
+    private bool aButtonJustPressed = false;
+    private float aButtonDebounceTime = 0.3f; // ãƒœã‚¿ãƒ³å…¥åŠ›ãƒ‡ãƒã‚¦ãƒ³ã‚¹æ™‚é–“
+    private float lastAButtonPressTime = -1f; // æœ€å¾Œã«ãƒœã‚¿ãƒ³ãŒæŠ¼ã•ã‚ŒãŸæ™‚é–“
+
+    // ãƒ‰ãƒ©ãƒƒã‚°é–¢é€£ã®å¤‰æ•°
     private Vector2 dragStartPosition;
     private GameObject draggedObject;
     private bool dragThresholdMet = false;
-    private const float dragThreshold = 5f; // ƒhƒ‰ƒbƒOŠJn‚·‚é‚½‚ß‚ÌÅ¬ˆÚ“®‹——£
+    private const float dragThreshold = 5f; // ãƒ‰ãƒ©ãƒƒã‚°é–‹å§‹ã™ã‚‹ãŸã‚ã®æœ€å°ç§»å‹•è·é›¢
 
     void Start()
     {
@@ -58,98 +63,92 @@ public class VRLaserPointer : MonoBehaviour
         {
             Debug.Log("[LaserPointer] Start initializing...");
 
-            // PanelVisibilityController‚ğ’T‚·i‚à‚µSerializeField‚Åİ’è‚³‚ê‚Ä‚¢‚È‚¯‚ê‚Îj
+            // PanelVisibilityControllerã‚’æ¢ã™ï¼ˆã‚‚ã—SerializeFieldã§è¨­å®šã•ã‚Œã¦ã„ãªã‘ã‚Œã°ï¼‰
             if (panelVisibilityController == null)
             {
                 panelVisibilityController = FindFirstObjectByType<PanelVisibilityController>();
                 if (panelVisibilityController == null)
                 {
-                    Debug.LogWarning("[LaserPointer] PanelVisibilityController‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñI");
+                    Debug.LogWarning("[LaserPointer] PanelVisibilityControllerãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ï¼");
                 }
                 else
                 {
-                    Debug.Log("[LaserPointer] PanelVisibilityController‚ğ©“®ŒŸo");
+                    Debug.Log("[LaserPointer] PanelVisibilityControllerã‚’è‡ªå‹•æ¤œå‡º");
                 }
             }
 
-            // EventSystem‚ğ’T‚·i‚à‚µSerializeField‚Åİ’è‚³‚ê‚Ä‚¢‚È‚¯‚ê‚Îj
+            // EventSystemã‚’æ¢ã™ï¼ˆã‚‚ã—SerializeFieldã§è¨­å®šã•ã‚Œã¦ã„ãªã‘ã‚Œã°ï¼‰
             if (eventSystem == null)
             {
                 eventSystem = FindFirstObjectByType<EventSystem>();
                 if (eventSystem == null)
                 {
-                    Debug.LogWarning("[LaserPointer] EventSystem‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñI");
+                    Debug.LogWarning("[LaserPointer] EventSystemãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ï¼");
                 }
                 else
                 {
-                    Debug.Log("[LaserPointer] EventSystem‚ğ©“®ŒŸo");
+                    Debug.Log("[LaserPointer] EventSystemã‚’è‡ªå‹•æ¤œå‡º");
                 }
             }
 
-            // UIRaycaster‚Ìƒ`ƒFƒbƒN
+            // UIRaycasterã®ãƒã‚§ãƒƒã‚¯
             if (uiRaycaster == null)
             {
-                Debug.LogWarning("[LaserPointer] uiRaycaster‚ªİ’è‚³‚ê‚Ä‚¢‚Ü‚¹‚ñ");
+                Debug.LogWarning("[LaserPointer] uiRaycasterãŒè¨­å®šã•ã‚Œã¦ã„ã¾ã›ã‚“");
 
-                // ƒV[ƒ““à‚ÌGraphicRaycaster‚ğ©“®ŒŸo
+                // ã‚·ãƒ¼ãƒ³å†…ã®GraphicRaycasterã‚’è‡ªå‹•æ¤œå‡º
                 GraphicRaycaster[] raycasters = FindObjectsByType<GraphicRaycaster>(FindObjectsSortMode.None);
                 if (raycasters.Length > 0)
                 {
                     uiRaycaster = raycasters[0];
-                    Debug.Log($"[LaserPointer] GraphicRaycaster‚ğ©“®ŒŸo: {uiRaycaster.gameObject.name}");
+                    Debug.Log($"[LaserPointer] GraphicRaycasterã‚’è‡ªå‹•æ¤œå‡º: {uiRaycaster.gameObject.name}");
                 }
             }
 
-            // ƒŒ[ƒU[—p‚ÌLineRenderer‚ğİ’è
+            // ãƒ¬ãƒ¼ã‚¶ãƒ¼ç”¨ã®LineRendererã‚’è¨­å®š
             InitializeLineRenderer();
 
-            // ƒ|ƒCƒ“ƒ^[ƒhƒbƒg‚ğ¶¬
+            // ãƒã‚¤ãƒ³ã‚¿ãƒ¼ãƒ‰ãƒƒãƒˆã‚’ç”Ÿæˆ
             InitializeHitPoint();
 
-            // PointerEventData‚Ì‰Šú‰»
+            // PointerEventDataã®åˆæœŸåŒ–
             if (eventSystem != null)
             {
                 pointerData = new PointerEventData(eventSystem);
                 cachedPointerData = new PointerEventData(eventSystem);
-                Debug.Log("[LaserPointer] PointerEventData‚ğ‰Šú‰»");
+                Debug.Log("[LaserPointer] PointerEventDataã‚’åˆæœŸåŒ–");
             }
             else
             {
-                Debug.LogError("[LaserPointer] EventSystem‚ªŒ©‚Â‚©‚ç‚È‚¢‚½‚ßAPointerEventData‚ğ‰Šú‰»‚Å‚«‚Ü‚¹‚ñ");
+                Debug.LogError("[LaserPointer] EventSystemãŒè¦‹ã¤ã‹ã‚‰ãªã„ãŸã‚ã€PointerEventDataã‚’åˆæœŸåŒ–ã§ãã¾ã›ã‚“");
             }
 
-            // “ü—ÍƒAƒNƒVƒ‡ƒ“‚ğ—LŒø‰»
+            // å…¥åŠ›ã‚¢ã‚¯ã‚·ãƒ§ãƒ³ã‚’æœ‰åŠ¹åŒ–
             if (triggerAction != null)
             {
                 triggerAction.action.Enable();
-                Debug.Log("[LaserPointer] ƒgƒŠƒK[ƒAƒNƒVƒ‡ƒ“—LŒø‰»: " + triggerAction.action.name);
+                Debug.Log("[LaserPointer] ãƒˆãƒªã‚¬ãƒ¼ã‚¢ã‚¯ã‚·ãƒ§ãƒ³æœ‰åŠ¹åŒ–: " + triggerAction.action.name);
             }
             else
             {
-                Debug.LogError("[LaserPointer] triggerAction‚ªİ’è‚³‚ê‚Ä‚¢‚Ü‚¹‚ñ");
+                Debug.LogError("[LaserPointer] triggerActionãŒè¨­å®šã•ã‚Œã¦ã„ã¾ã›ã‚“");
             }
 
             if (aButtonAction != null)
             {
-                // Šù‘¶‚ÌƒCƒxƒ“ƒg‚ğƒNƒŠƒA‚µ‚ÄÄ“o˜^
-                try
-                {
-                    aButtonAction.action.performed -= OnAButtonPressed;
-                }
-                catch (System.Exception)
-                {
-                    // –¢“o˜^‚Ìê‡A—áŠO‚ª”­¶‚·‚é‰Â”\«‚ª‚ ‚é‚Ì‚Å–³‹
-                }
-
+                // Aãƒœã‚¿ãƒ³ç”¨ã®ã‚¤ãƒ™ãƒ³ãƒˆã‚’è¨­å®šã™ã‚‹å‰ã«æ—¢å­˜ã®ã‚¤ãƒ™ãƒ³ãƒˆã‚’è§£é™¤
+                aButtonAction.action.performed -= OnAButtonPressed;
+                
+                // Aãƒœã‚¿ãƒ³ã®ã‚¤ãƒ™ãƒ³ãƒˆã‚’ç™»éŒ²
                 aButtonAction.action.Enable();
                 aButtonAction.action.performed += OnAButtonPressed;
-                Debug.Log("[LaserPointer] Aƒ{ƒ^ƒ“ƒAƒNƒVƒ‡ƒ“—LŒø‰»: " + aButtonAction.action.name);
+                Debug.Log("[LaserPointer] Aãƒœã‚¿ãƒ³ã‚¢ã‚¯ã‚·ãƒ§ãƒ³æœ‰åŠ¹åŒ–: " + aButtonAction.action.name);
 
-                // ƒAƒNƒVƒ‡ƒ“‚Ìó‘Ô‚ğŠm”F
+                // ã‚¢ã‚¯ã‚·ãƒ§ãƒ³ã®çŠ¶æ…‹ã‚’ç¢ºèª
                 InputAction action = aButtonAction.action;
                 Debug.Log($"[LaserPointer] A Button Action: Enabled={action.enabled}, Phase={action.phase}, BindingCount={action.bindings.Count}");
 
-                // ƒoƒCƒ“ƒfƒBƒ“ƒO‚ğƒfƒoƒbƒOo—Í
+                // ãƒã‚¤ãƒ³ãƒ‡ã‚£ãƒ³ã‚°ã‚’ãƒ‡ãƒãƒƒã‚°å‡ºåŠ›
                 for (int i = 0; i < action.bindings.Count; i++)
                 {
                     Debug.Log($"[LaserPointer] Binding {i}: Path={action.bindings[i].path}, Action={action.bindings[i].action}");
@@ -157,13 +156,13 @@ public class VRLaserPointer : MonoBehaviour
             }
             else
             {
-                Debug.LogError("[LaserPointer] aButtonAction‚ªİ’è‚³‚ê‚Ä‚¢‚Ü‚¹‚ñ");
+                Debug.LogError("[LaserPointer] aButtonActionãŒè¨­å®šã•ã‚Œã¦ã„ã¾ã›ã‚“");
             }
 
-            // CanvasList‚ğ‰Šú‰»
+            // CanvasListã‚’åˆæœŸåŒ–
             if (targetCanvasList != null && targetCanvasList.Length > 0)
             {
-                Debug.Log($"[LaserPointer] ‘ÎÛCanvas”: {targetCanvasList.Length}");
+                Debug.Log($"[LaserPointer] å¯¾è±¡Canvasæ•°: {targetCanvasList.Length}");
                 foreach (var canvas in targetCanvasList)
                 {
                     if (canvas != null)
@@ -178,16 +177,16 @@ public class VRLaserPointer : MonoBehaviour
             }
             else
             {
-                Debug.LogWarning("[LaserPointer] targetCanvasList‚ªİ’è‚³‚ê‚Ä‚¢‚È‚¢‚©‹ó‚Å‚·");
+                Debug.LogWarning("[LaserPointer] targetCanvasListãŒè¨­å®šã•ã‚Œã¦ã„ãªã„ã‹ç©ºã§ã™");
             }
 
             UpdateVisibleCanvasList();
 
-            Debug.Log("[LaserPointer] ‰Šú‰»Š®—¹");
+            Debug.Log("[LaserPointer] åˆæœŸåŒ–å®Œäº†");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] ‰Šú‰»ƒGƒ‰[: {e.Message}\n{e.StackTrace}");
+            Debug.LogError($"[LaserPointer] åˆæœŸåŒ–ã‚¨ãƒ©ãƒ¼: {e.Message}\n{e.StackTrace}");
         }
     }
 
@@ -195,16 +194,16 @@ public class VRLaserPointer : MonoBehaviour
     {
         try
         {
-            // Aƒ{ƒ^ƒ“‚ÌƒCƒxƒ“ƒg‚ğ‰ğœ
+            // Aãƒœã‚¿ãƒ³ã®ã‚¤ãƒ™ãƒ³ãƒˆã‚’è§£é™¤
             if (aButtonAction != null)
             {
                 aButtonAction.action.performed -= OnAButtonPressed;
-                Debug.Log("[LaserPointer] Aƒ{ƒ^ƒ“ƒCƒxƒ“ƒg‚ğ‰ğœ");
+                Debug.Log("[LaserPointer] Aãƒœã‚¿ãƒ³ã‚¤ãƒ™ãƒ³ãƒˆã‚’è§£é™¤");
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] OnDestroy ƒGƒ‰[: {e.Message}");
+            Debug.LogError($"[LaserPointer] OnDestroy ã‚¨ãƒ©ãƒ¼: {e.Message}");
         }
     }
 
@@ -212,7 +211,7 @@ public class VRLaserPointer : MonoBehaviour
     {
         try
         {
-            // LineRenderer‚ª‚È‚¯‚ê‚Î’Ç‰Á
+            // LineRendererãŒãªã‘ã‚Œã°è¿½åŠ 
             lineRenderer = gameObject.GetComponent<LineRenderer>();
             if (lineRenderer == null)
             {
@@ -220,24 +219,24 @@ public class VRLaserPointer : MonoBehaviour
                 Debug.Log("[LaserPointer] LineRenderer added to game object");
             }
 
-            // LineRenderer‚Ìİ’è‚ğƒNƒŠƒA‚É
+            // LineRendererã®è¨­å®šã‚’ã‚¯ãƒªã‚¢ã«
             lineRenderer.useWorldSpace = true;
             lineRenderer.startWidth = rayWidth;
-            lineRenderer.endWidth = rayWidth * 0.5f; // æ×‚è‚É‚·‚é
+            lineRenderer.endWidth = rayWidth * 0.5f; // å…ˆç´°ã‚Šã«ã™ã‚‹
 
-            // F‚ğ–¾Šm‚Éİ’è
+            // è‰²ã‚’æ˜ç¢ºã«è¨­å®š
             lineRenderer.startColor = rayColor;
-            lineRenderer.endColor = new Color(rayColor.r, rayColor.g, rayColor.b, 0.0f); // I“_‚Í“§–¾‚É
+            lineRenderer.endColor = new Color(rayColor.r, rayColor.g, rayColor.b, 0.0f); // çµ‚ç‚¹ã¯é€æ˜ã«
 
-            // ƒ}ƒeƒŠƒAƒ‹‚ğ“KØ‚Éİ’è
+            // ãƒãƒ†ãƒªã‚¢ãƒ«ã‚’é©åˆ‡ã«è¨­å®š
             Material laserMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
             if (laserMaterial == null)
             {
-                Debug.LogWarning("[LaserPointer] URPƒVƒF[ƒ_[‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñB‘ã‘ÖƒVƒF[ƒ_[‚ğ‚µ‚Ü‚·B");
+                Debug.LogWarning("[LaserPointer] URPã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ã€‚ä»£æ›¿ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã‚’è©¦ã—ã¾ã™ã€‚");
                 laserMaterial = new Material(Shader.Find("Unlit/Color"));
                 if (laserMaterial == null)
                 {
-                    Debug.LogWarning("[LaserPointer] ‘ã‘ÖƒVƒF[ƒ_[‚àŒ©‚Â‚©‚è‚Ü‚¹‚ñBV‚µ‚¢ƒ}ƒeƒŠƒAƒ‹‚ğì¬‚µ‚Ü‚·B");
+                    Debug.LogWarning("[LaserPointer] ä»£æ›¿ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã‚‚è¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ã€‚æ–°ã—ã„ãƒãƒ†ãƒªã‚¢ãƒ«ã‚’ä½œæˆã—ã¾ã™ã€‚");
                     laserMaterial = new Material(Shader.Find("Standard"));
                 }
             }
@@ -246,27 +245,27 @@ public class VRLaserPointer : MonoBehaviour
             {
                 laserMaterial.color = rayColor;
                 lineRenderer.material = laserMaterial;
-                Debug.Log($"[LaserPointer] ƒŒ[ƒU[ƒ}ƒeƒŠƒAƒ‹ì¬: Color={rayColor}");
+                Debug.Log($"[LaserPointer] ãƒ¬ãƒ¼ã‚¶ãƒ¼ãƒãƒ†ãƒªã‚¢ãƒ«ä½œæˆ: Color={rayColor}");
             }
             else
             {
-                Debug.LogError("[LaserPointer] ƒŒ[ƒU[ƒ}ƒeƒŠƒAƒ‹‚ğì¬‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½");
+                Debug.LogError("[LaserPointer] ãƒ¬ãƒ¼ã‚¶ãƒ¼ãƒãƒ†ãƒªã‚¢ãƒ«ã‚’ä½œæˆã§ãã¾ã›ã‚“ã§ã—ãŸ");
             }
 
             lineRenderer.positionCount = 2;
 
-            // ‰ŠúˆÊ’u‚ğİ’è
+            // åˆæœŸä½ç½®ã‚’è¨­å®š
             Vector3 startPos = transform.position;
             Vector3 endPos = startPos + transform.forward * maxVisualDistance;
 
             lineRenderer.SetPosition(0, startPos);
             lineRenderer.SetPosition(1, endPos);
 
-            Debug.Log($"[LaserPointer] LineRenderer‰Šú‰»Š®—¹: ŠJnˆÊ’u={startPos}, I—¹ˆÊ’u={endPos}, Forward={transform.forward}");
+            Debug.Log($"[LaserPointer] LineRendereråˆæœŸåŒ–å®Œäº†: é–‹å§‹ä½ç½®={startPos}, çµ‚äº†ä½ç½®={endPos}, Forward={transform.forward}");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] LineRenderer‰Šú‰»ƒGƒ‰[: {e.Message}\n{e.StackTrace}");
+            Debug.LogError($"[LaserPointer] LineRendereråˆæœŸåŒ–ã‚¨ãƒ©ãƒ¼: {e.Message}\n{e.StackTrace}");
         }
     }
 
@@ -274,7 +273,7 @@ public class VRLaserPointer : MonoBehaviour
     {
         try
         {
-            // ƒ|ƒCƒ“ƒ^[ƒhƒbƒg‚ğì¬
+            // ãƒã‚¤ãƒ³ã‚¿ãƒ¼ãƒ‰ãƒƒãƒˆã‚’ä½œæˆ
             pointerDot = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             if (pointerDot == null)
             {
@@ -283,25 +282,25 @@ public class VRLaserPointer : MonoBehaviour
             }
 
             pointerDot.name = "LaserDot";
-            // ƒ[ƒ‹ƒh‹óŠÔ‚É”z’u‚µAeqŠÖŒW‚ğİ’è‚µ‚È‚¢
+            // ãƒ¯ãƒ¼ãƒ«ãƒ‰ç©ºé–“ã«é…ç½®ã—ã€è¦ªå­é–¢ä¿‚ã‚’è¨­å®šã—ãªã„
             pointerDot.transform.SetParent(null);
             pointerDot.transform.localScale = Vector3.one * dotScale;
 
-            // Õ“Ë”»’è‚Í•s—v‚È‚Ì‚Åíœ
+            // è¡çªåˆ¤å®šã¯ä¸è¦ãªã®ã§å‰Šé™¤
             Collider dotCollider = pointerDot.GetComponent<Collider>();
             if (dotCollider != null)
             {
                 Destroy(dotCollider);
             }
 
-            // ƒ}ƒeƒŠƒAƒ‹‚ğİ’è
+            // ãƒãƒ†ãƒªã‚¢ãƒ«ã‚’è¨­å®š
             dotRenderer = pointerDot.GetComponent<Renderer>();
             if (dotRenderer != null)
             {
                 Material dotMaterial = new Material(Shader.Find("Universal Render Pipeline/Lit"));
                 if (dotMaterial == null)
                 {
-                    Debug.LogWarning("[LaserPointer] URPƒVƒF[ƒ_[‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñB‘ã‘ÖƒVƒF[ƒ_[‚ğ‚µ‚Ü‚·B");
+                    Debug.LogWarning("[LaserPointer] URPã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“ã€‚ä»£æ›¿ã‚·ã‚§ãƒ¼ãƒ€ãƒ¼ã‚’è©¦ã—ã¾ã™ã€‚");
                     dotMaterial = new Material(Shader.Find("Standard"));
                 }
 
@@ -309,11 +308,11 @@ public class VRLaserPointer : MonoBehaviour
                 {
                     dotMaterial.color = dotColor;
                     dotRenderer.material = dotMaterial;
-                    Debug.Log($"[LaserPointer] ƒhƒbƒgƒ}ƒeƒŠƒAƒ‹ì¬: Color={dotColor}");
+                    Debug.Log($"[LaserPointer] ãƒ‰ãƒƒãƒˆãƒãƒ†ãƒªã‚¢ãƒ«ä½œæˆ: Color={dotColor}");
                 }
                 else
                 {
-                    Debug.LogError("[LaserPointer] ƒhƒbƒgƒ}ƒeƒŠƒAƒ‹‚ğì¬‚Å‚«‚Ü‚¹‚ñ‚Å‚µ‚½");
+                    Debug.LogError("[LaserPointer] ãƒ‰ãƒƒãƒˆãƒãƒ†ãƒªã‚¢ãƒ«ã‚’ä½œæˆã§ãã¾ã›ã‚“ã§ã—ãŸ");
                 }
             }
             else
@@ -324,15 +323,15 @@ public class VRLaserPointer : MonoBehaviour
             hitPoint = pointerDot.transform;
             pointerDot.SetActive(false);
 
-            Debug.Log("[LaserPointer] ƒ|ƒCƒ“ƒ^[ƒhƒbƒg‰Šú‰»Š®—¹");
+            Debug.Log("[LaserPointer] ãƒã‚¤ãƒ³ã‚¿ãƒ¼ãƒ‰ãƒƒãƒˆåˆæœŸåŒ–å®Œäº†");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] ƒ|ƒCƒ“ƒ^[ƒhƒbƒg‰Šú‰»ƒGƒ‰[: {e.Message}\n{e.StackTrace}");
+            Debug.LogError($"[LaserPointer] ãƒã‚¤ãƒ³ã‚¿ãƒ¼ãƒ‰ãƒƒãƒˆåˆæœŸåŒ–ã‚¨ãƒ©ãƒ¼: {e.Message}\n{e.StackTrace}");
         }
     }
 
-    // •\¦’†‚ÌCanvasƒŠƒXƒg‚ğXV
+    // è¡¨ç¤ºä¸­ã®Canvasãƒªã‚¹ãƒˆã‚’æ›´æ–°
     private void UpdateVisibleCanvasList()
     {
         try
@@ -341,41 +340,51 @@ public class VRLaserPointer : MonoBehaviour
 
             if (targetCanvasList == null || targetCanvasList.Length == 0)
             {
-                Debug.LogWarning("[LaserPointer] targetCanvasList‚ªİ’è‚³‚ê‚Ä‚¢‚È‚¢‚©‹ó‚Å‚·");
+                Debug.LogWarning("[LaserPointer] targetCanvasListãŒè¨­å®šã•ã‚Œã¦ã„ãªã„ã‹ç©ºã§ã™");
                 return;
             }
+
+            // ãƒ‘ãƒãƒ«ã‚¢ã‚¯ãƒ†ã‚£ãƒ–çŠ¶æ…‹ã‚’å–å¾—
+            bool panelActive = panelVisibilityController != null ? panelVisibilityController.IsPanelActive : true;
 
             foreach (Canvas canvas in targetCanvasList)
             {
                 if (canvas == null) continue;
 
-                // PanelVisibilityController‚Å§Œä‚³‚ê‚Ä‚¢‚éƒpƒlƒ‹‚©‚Ç‚¤‚©Šm”F
+                // ãƒ‘ãƒãƒ«ãŒéã‚¢ã‚¯ãƒ†ã‚£ãƒ–ã®å ´åˆã¯ã‚¹ã‚­ãƒƒãƒ—
+                if (!panelActive)
+                {
+                    Debug.Log($"[LaserPointer] ãƒ‘ãƒãƒ«éã‚¢ã‚¯ãƒ†ã‚£ãƒ–ã®ãŸã‚ã‚¹ã‚­ãƒƒãƒ—: {canvas.name}");
+                    continue;
+                }
+
+                // CanvasGroupã®çŠ¶æ…‹ã‚’ãƒã‚§ãƒƒã‚¯
                 CanvasGroup canvasGroup = canvas.GetComponent<CanvasGroup>();
                 if (canvasGroup != null)
                 {
                     if (canvasGroup.alpha > 0f && canvasGroup.interactable)
                     {
                         visibleCanvasList.Add(canvas);
-                        Debug.Log($"[LaserPointer] •\¦Canvas‚É’Ç‰Á: {canvas.name}, Alpha={canvasGroup.alpha}, Interactable={canvasGroup.interactable}");
+                        Debug.Log($"[LaserPointer] è¡¨ç¤ºCanvasã«è¿½åŠ : {canvas.name}, Alpha={canvasGroup.alpha}, Interactable={canvasGroup.interactable}");
                     }
                     else
                     {
-                        Debug.Log($"[LaserPointer] ”ñ•\¦Canvas: {canvas.name}, Alpha={canvasGroup.alpha}, Interactable={canvasGroup.interactable}");
+                        Debug.Log($"[LaserPointer] éè¡¨ç¤ºCanvas: {canvas.name}, Alpha={canvasGroup.alpha}, Interactable={canvasGroup.interactable}");
                     }
                 }
                 else
                 {
-                    // CanvasGroup‚ª‚È‚¯‚ê‚Î‚»‚Ì‚Ü‚Ü’Ç‰Á
+                    // CanvasGroupãŒãªã‘ã‚Œã°ãã®ã¾ã¾è¿½åŠ 
                     visibleCanvasList.Add(canvas);
-                    Debug.Log($"[LaserPointer] CanvasGroup‚È‚µCanvas’Ç‰Á: {canvas.name}");
+                    Debug.Log($"[LaserPointer] CanvasGroupãªã—Canvasè¿½åŠ : {canvas.name}");
                 }
             }
 
-            Debug.Log($"[LaserPointer] •\¦Canvas”: {visibleCanvasList.Count}");
+            Debug.Log($"[LaserPointer] è¡¨ç¤ºCanvasæ•°: {visibleCanvasList.Count}");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] UpdateVisibleCanvasList ƒGƒ‰[: {e.Message}");
+            Debug.LogError($"[LaserPointer] UpdateVisibleCanvasList ã‚¨ãƒ©ãƒ¼: {e.Message}");
         }
     }
 
@@ -383,18 +392,24 @@ public class VRLaserPointer : MonoBehaviour
     {
         try
         {
-            // ƒgƒŠƒK[“ü—Í‚ğŠm”F
+            // ãƒˆãƒªã‚¬ãƒ¼å…¥åŠ›ã‚’ç¢ºèª
             CheckTriggerInput();
 
-            // ƒŒ[ƒU[‚ğXV
+            // Aãƒœã‚¿ãƒ³ã®ãƒ‡ãƒã‚¦ãƒ³ã‚¹å‡¦ç†
+            if (aButtonJustPressed && Time.time - lastAButtonPressTime > aButtonDebounceTime)
+            {
+                aButtonJustPressed = false;
+            }
+
+            // ãƒ¬ãƒ¼ã‚¶ãƒ¼ã‚’æ›´æ–°
             UpdateLaser();
 
-            // ƒhƒ‰ƒbƒOˆ—‚ÌXV
+            // ãƒ‰ãƒ©ãƒƒã‚°å‡¦ç†ã®æ›´æ–°
             UpdateDrag();
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] Update ƒGƒ‰[: {e.Message}");
+            Debug.LogError($"[LaserPointer] Update ã‚¨ãƒ©ãƒ¼: {e.Message}");
         }
     }
 
@@ -406,12 +421,12 @@ public class VRLaserPointer : MonoBehaviour
             {
                 bool isTriggerPressed = triggerAction.action.IsPressed();
 
-                // ‰Ÿ‚³‚ê‚½uŠÔ
+                // æŠ¼ã•ã‚ŒãŸç¬é–“
                 if (isTriggerPressed && !triggerPressed)
                 {
                     TriggerDown();
                 }
-                // —£‚³‚ê‚½uŠÔ
+                // é›¢ã•ã‚ŒãŸç¬é–“
                 else if (!isTriggerPressed && triggerPressed)
                 {
                     TriggerUp();
@@ -422,7 +437,7 @@ public class VRLaserPointer : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] CheckTriggerInput ƒGƒ‰[: {e.Message}");
+            Debug.LogError($"[LaserPointer] CheckTriggerInput ã‚¨ãƒ©ãƒ¼: {e.Message}");
         }
     }
 
@@ -436,30 +451,30 @@ public class VRLaserPointer : MonoBehaviour
                 return;
             }
 
-            // ƒRƒ“ƒgƒ[ƒ‰[‚ÌˆÊ’u‚Æ•ûŒü‚ğæ“¾
+            // ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ©ãƒ¼ã®ä½ç½®ã¨æ–¹å‘ã‚’å–å¾—
             Vector3 startPos = transform.position;
             Vector3 direction = transform.forward;
 
-            // ƒfƒoƒbƒO - 10ƒtƒŒ[ƒ€‚²‚Æ‚Éî•ñ‚ğo—Í
+            // ãƒ‡ãƒãƒƒã‚° - 10ãƒ•ãƒ¬ãƒ¼ãƒ ã”ã¨ã«æƒ…å ±ã‚’å‡ºåŠ›
             if (Time.frameCount % 30 == 0)
             {
-                Debug.Log($"[LaserPointer] ƒRƒ“ƒgƒ[ƒ‰[: Position={startPos}, Forward={direction}, Rotation={transform.rotation.eulerAngles}");
+                Debug.Log($"[LaserPointer] ã‚³ãƒ³ãƒˆãƒ­ãƒ¼ãƒ©ãƒ¼: Position={startPos}, Forward={direction}, Rotation={transform.rotation.eulerAngles}");
             }
 
-            // ƒŒ[ƒU[‚ÌŠJnˆÊ’u‚ğİ’è
+            // ãƒ¬ãƒ¼ã‚¶ãƒ¼ã®é–‹å§‹ä½ç½®ã‚’è¨­å®š
             lineRenderer.SetPosition(0, startPos);
 
-            // ‘OƒtƒŒ[ƒ€‚Ìƒ^[ƒQƒbƒg‚ğ•Û‘¶
+            // å‰ãƒ•ãƒ¬ãƒ¼ãƒ ã®ã‚¿ãƒ¼ã‚²ãƒƒãƒˆã‚’ä¿å­˜
             lastTarget = currentTarget;
             currentTarget = null;
 
-            // ƒŒƒC‚ÌÅ‘å‹——£‚ğ‰Šú‰»
+            // ãƒ¬ã‚¤ã®æœ€å¤§è·é›¢ã‚’åˆæœŸåŒ–
             float hitDistance = maxRayDistance;
 
-            // •\¦’†‚ÌCanvasƒŠƒXƒg‚ğXV
+            // è¡¨ç¤ºä¸­ã®Canvasãƒªã‚¹ãƒˆã‚’æ›´æ–°
             UpdateVisibleCanvasList();
 
-            // •¨—ƒIƒuƒWƒFƒNƒg‚Æ‚ÌŒğ·”»’è
+            // ç‰©ç†ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã¨ã®äº¤å·®åˆ¤å®š
             bool hitPhysics = false;
             RaycastHit physicsHit = new RaycastHit();
 
@@ -469,7 +484,7 @@ public class VRLaserPointer : MonoBehaviour
                 if (hitPhysics && physicsHit.distance < hitDistance)
                 {
                     hitDistance = physicsHit.distance;
-                    Debug.Log($"[LaserPointer] •¨—ƒIƒuƒWƒFƒNƒgƒqƒbƒg: {physicsHit.collider.name}, ‹——£={physicsHit.distance}");
+                    Debug.Log($"[LaserPointer] ç‰©ç†ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆãƒ’ãƒƒãƒˆ: {physicsHit.collider.name}, è·é›¢={physicsHit.distance}");
                 }
             }
             catch (System.Exception e)
@@ -477,17 +492,17 @@ public class VRLaserPointer : MonoBehaviour
                 Debug.LogError($"[LaserPointer] Physics Raycast error: {e.Message}");
             }
 
-            // UI—v‘f‚Æ‚ÌŒğ·”»’è
+            // UIè¦ç´ ã¨ã®äº¤å·®åˆ¤å®š
             bool hitUI = false;
             if (visibleCanvasList.Count > 0)
             {
-                // UI Raycast‚ÌƒfƒoƒbƒOî•ñ
+                // UI Raycastã®ãƒ‡ãƒãƒƒã‚°æƒ…å ±
                 if (Time.frameCount % 60 == 0)
                 {
                     Debug.Log($"[LaserPointer] UI Raycast: Canvas Count={visibleCanvasList.Count}");
                 }
 
-                // ŠeCanvas‚É‘Î‚µ‚ÄŒğ·”»’è‚ğs‚¤
+                // å„Canvasã«å¯¾ã—ã¦äº¤å·®åˆ¤å®šã‚’è¡Œã†
                 foreach (Canvas canvas in visibleCanvasList)
                 {
                     if (canvas == null) continue;
@@ -497,7 +512,7 @@ public class VRLaserPointer : MonoBehaviour
                         if (CheckUIRaycast(startPos, direction, canvas, ref hitDistance))
                         {
                             hitUI = true;
-                            Debug.Log($"[LaserPointer] UIƒqƒbƒg: Canvas={canvas.name}, Target={currentTarget?.name}");
+                            Debug.Log($"[LaserPointer] UIãƒ’ãƒƒãƒˆ: Canvas={canvas.name}, Target={currentTarget?.name}");
                             break;
                         }
                     }
@@ -508,18 +523,18 @@ public class VRLaserPointer : MonoBehaviour
                 }
             }
 
-            // UI—v‘f‚©‚çŠO‚ê‚½ê‡
+            // UIè¦ç´ ã‹ã‚‰å¤–ã‚ŒãŸå ´åˆ
             if (lastTarget != null && currentTarget == null && !isDragging)
             {
                 HandlePointerExit(lastTarget);
             }
 
-            // ƒŒ[ƒU[‚ÌI“_ˆÊ’u‚Æ’·‚³‚ğİ’è
+            // ãƒ¬ãƒ¼ã‚¶ãƒ¼ã®çµ‚ç‚¹ä½ç½®ã¨é•·ã•ã‚’è¨­å®š
             float visualDistance = Mathf.Min(hitDistance, maxVisualDistance);
             Vector3 endPos = startPos + direction * visualDistance;
             lineRenderer.SetPosition(1, endPos);
 
-            // ƒ|ƒCƒ“ƒ^[ƒhƒbƒg‚Ìˆ—
+            // ãƒã‚¤ãƒ³ã‚¿ãƒ¼ãƒ‰ãƒƒãƒˆã®å‡¦ç†
             if (pointerDot != null)
             {
                 if ((hitUI || (hitPhysics && physicsHit.distance < maxRayDistance)) && !isDragging)
@@ -538,7 +553,7 @@ public class VRLaserPointer : MonoBehaviour
 
                         if (Time.frameCount % 30 == 0)
                         {
-                            Debug.Log($"[LaserPointer] ƒhƒbƒg•\¦: Position={hitPos}, Active={pointerDot.activeSelf}");
+                            Debug.Log($"[LaserPointer] ãƒ‰ãƒƒãƒˆè¡¨ç¤º: Position={hitPos}, Active={pointerDot.activeSelf}");
                         }
                     }
                 }
@@ -554,39 +569,39 @@ public class VRLaserPointer : MonoBehaviour
         }
     }
 
-    // ƒhƒ‰ƒbƒOˆ—‚ÌXV
+    // ãƒ‰ãƒ©ãƒƒã‚°å‡¦ç†ã®æ›´æ–°
     private void UpdateDrag()
     {
         try
         {
             if (triggerPressed && draggedObject != null)
             {
-                // ƒhƒ‰ƒbƒO‹——£‚ÌŒvZ
+                // ãƒ‰ãƒ©ãƒƒã‚°è·é›¢ã®è¨ˆç®—
                 float dragDistance = Vector2.Distance(dragStartPosition, pointerData.position);
 
-                // ƒhƒ‰ƒbƒO‚Ìè‡’l‚ğ’´‚¦‚½‚çƒhƒ‰ƒbƒO‚Æ”»’è
+                // ãƒ‰ãƒ©ãƒƒã‚°ã®é–¾å€¤ã‚’è¶…ãˆãŸã‚‰ãƒ‰ãƒ©ãƒƒã‚°ã¨åˆ¤å®š
                 if (!dragThresholdMet && dragDistance > dragThreshold)
                 {
                     dragThresholdMet = true;
                     isDragging = true;
 
-                    Debug.Log($"[LaserPointer] ƒhƒ‰ƒbƒOŠJn: ƒIƒuƒWƒFƒNƒg={draggedObject.name}, ‹——£={dragDistance}");
+                    Debug.Log($"[LaserPointer] ãƒ‰ãƒ©ãƒƒã‚°é–‹å§‹: ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆ={draggedObject.name}, è·é›¢={dragDistance}");
 
-                    // ƒhƒ‰ƒbƒOŠJnƒCƒxƒ“ƒg‚ğ”­s
+                    // ãƒ‰ãƒ©ãƒƒã‚°é–‹å§‹ã‚¤ãƒ™ãƒ³ãƒˆã‚’ç™ºè¡Œ
                     cachedPointerData.pointerDrag = draggedObject;
                     cachedPointerData.dragging = true;
                     ExecuteEvents.Execute(draggedObject, cachedPointerData, ExecuteEvents.beginDragHandler);
                 }
 
-                // ƒhƒ‰ƒbƒO’†‚Ìˆ—
+                // ãƒ‰ãƒ©ãƒƒã‚°ä¸­ã®å‡¦ç†
                 if (isDragging)
                 {
-                    // ƒhƒ‰ƒbƒOƒCƒxƒ“ƒg‚ğ”­s
+                    // ãƒ‰ãƒ©ãƒƒã‚°ã‚¤ãƒ™ãƒ³ãƒˆã‚’ç™ºè¡Œ
                     cachedPointerData.position = pointerData.position;
                     cachedPointerData.delta = pointerData.position - dragStartPosition;
                     ExecuteEvents.Execute(draggedObject, cachedPointerData, ExecuteEvents.dragHandler);
 
-                    // ƒXƒNƒ[ƒ‹ƒo[‚âŠÖ˜AUIƒRƒ“ƒ|[ƒlƒ“ƒg‚É‘Î‚·‚é“Á•Êˆ—
+                    // ã‚¹ã‚¯ãƒ­ãƒ¼ãƒ«ãƒãƒ¼ã‚„é–¢é€£UIã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã«å¯¾ã™ã‚‹ç‰¹åˆ¥å‡¦ç†
                     ScrollRect scrollRect = draggedObject.GetComponent<ScrollRect>();
                     if (scrollRect == null && draggedObject.transform.parent != null)
                     {
@@ -595,12 +610,12 @@ public class VRLaserPointer : MonoBehaviour
 
                     if (scrollRect != null)
                     {
-                        // ƒXƒNƒ[ƒ‹‚ğÀs
+                        // ã‚¹ã‚¯ãƒ­ãƒ¼ãƒ«ã‚’å®Ÿè¡Œ
                         scrollRect.OnDrag(cachedPointerData);
 
                         if (Time.frameCount % 30 == 0)
                         {
-                            Debug.Log($"[LaserPointer] ƒXƒNƒ[ƒ‹’†: Delta={cachedPointerData.delta}");
+                            Debug.Log($"[LaserPointer] ã‚¹ã‚¯ãƒ­ãƒ¼ãƒ«ä¸­: Delta={cachedPointerData.delta}");
                         }
                     }
                 }
@@ -608,14 +623,14 @@ public class VRLaserPointer : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] UpdateDrag ƒGƒ‰[: {e.Message}");
+            Debug.LogError($"[LaserPointer] UpdateDrag ã‚¨ãƒ©ãƒ¼: {e.Message}");
         }
     }
 
-    // “Á’è‚ÌCanvas‚Æ‚ÌŒğ·”»’è
+    // ç‰¹å®šã®Canvasã¨ã®äº¤å·®åˆ¤å®š
     private bool CheckUIRaycast(Vector3 startPos, Vector3 direction, Canvas canvas, ref float hitDistance)
     {
-        // NULLƒ`ƒFƒbƒN‚ğŒµ–§‚ÉÀ{
+        // NULLãƒã‚§ãƒƒã‚¯ã‚’å³å¯†ã«å®Ÿæ–½
         if (canvas == null)
         {
             Debug.LogWarning("[LaserPointer] canvas is null");
@@ -636,17 +651,17 @@ public class VRLaserPointer : MonoBehaviour
 
         try
         {
-            // ƒŒƒC‚ÆƒLƒƒƒ“ƒoƒX‚ÌŒğ“_‚ğŒvZ
+            // ãƒ¬ã‚¤ã¨ã‚­ãƒ£ãƒ³ãƒã‚¹ã®äº¤ç‚¹ã‚’è¨ˆç®—
             Ray ray = new Ray(startPos, direction);
             RectTransform canvasRect = canvas.GetComponent<RectTransform>();
 
             if (canvasRect == null)
             {
-                Debug.LogWarning($"[LaserPointer] {canvas.name} ‚ÌRectTransform‚ªnull‚Å‚·");
+                Debug.LogWarning($"[LaserPointer] {canvas.name} ã®RectTransformãŒnullã§ã™");
                 return false;
             }
 
-            // ƒLƒƒƒ“ƒoƒX‚Ì•½–Ê‚ğŒvZiNaN’lƒ`ƒFƒbƒN‚ğ’Ç‰Áj
+            // ã‚­ãƒ£ãƒ³ãƒã‚¹ã®å¹³é¢ã‚’è¨ˆç®—ï¼ˆNaNå€¤ãƒã‚§ãƒƒã‚¯ã‚’è¿½åŠ ï¼‰
             Vector3 canvasNormal = -canvasRect.forward;
             if (float.IsNaN(canvasNormal.x) || float.IsNaN(canvasNormal.y) || float.IsNaN(canvasNormal.z))
             {
@@ -661,7 +676,7 @@ public class VRLaserPointer : MonoBehaviour
             {
                 Vector3 worldPos = startPos + direction * rayDistance;
 
-                // ¢ŠEÀ•W‚©‚çƒXƒNƒŠ[ƒ“À•W‚Ö
+                // ä¸–ç•Œåº§æ¨™ã‹ã‚‰ã‚¹ã‚¯ãƒªãƒ¼ãƒ³åº§æ¨™ã¸
                 Camera canvasCamera = canvas.worldCamera;
                 if (canvasCamera == null)
                 {
@@ -673,7 +688,7 @@ public class VRLaserPointer : MonoBehaviour
                     }
                 }
 
-                // WorldToScreenPoint‚É–â‘è‚ª‚ ‚éê‡‚É‘Îˆ
+                // WorldToScreenPointã«å•é¡ŒãŒã‚ã‚‹å ´åˆã«å¯¾å‡¦
                 Vector2 screenPoint;
                 try
                 {
@@ -685,7 +700,7 @@ public class VRLaserPointer : MonoBehaviour
                     return false;
                 }
 
-                // UIƒŒƒCƒLƒƒƒXƒg—p‚Ìƒf[ƒ^‚ğXV
+                // UIãƒ¬ã‚¤ã‚­ãƒ£ã‚¹ãƒˆç”¨ã®ãƒ‡ãƒ¼ã‚¿ã‚’æ›´æ–°
                 if (pointerData == null)
                 {
                     Debug.LogError("[LaserPointer] pointerData is null");
@@ -699,7 +714,7 @@ public class VRLaserPointer : MonoBehaviour
                 pointerData.useDragThreshold = true;
                 pointerData.pointerId = 0;
 
-                // UIƒŒƒCƒLƒƒƒXƒg‚ğÀs
+                // UIãƒ¬ã‚¤ã‚­ãƒ£ã‚¹ãƒˆã‚’å®Ÿè¡Œ
                 List<RaycastResult> results = new List<RaycastResult>();
                 try
                 {
@@ -713,21 +728,21 @@ public class VRLaserPointer : MonoBehaviour
 
                 if (results.Count > 0)
                 {
-                    // UIƒqƒbƒgŒ‹‰Ê
+                    // UIãƒ’ãƒƒãƒˆçµæœ
                     RaycastResult topResult = results[0];
                     GameObject targetObject = topResult.gameObject;
 
                     if (targetObject == null)
                     {
-                        Debug.LogWarning("[LaserPointer] ƒqƒbƒg‚µ‚½GameObject‚ªnull‚Å‚·");
+                        Debug.LogWarning("[LaserPointer] ãƒ’ãƒƒãƒˆã—ãŸGameObjectãŒnullã§ã™");
                         return false;
                     }
 
-                    // ƒ{ƒ^ƒ“‚ÌqƒIƒuƒWƒFƒNƒgiƒeƒLƒXƒg‚È‚Çj‚ªƒqƒbƒg‚µ‚½ê‡Ae‚Ìƒ{ƒ^ƒ“‚ğ’T‚·
+                    // ãƒœã‚¿ãƒ³ã®å­ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆï¼ˆãƒ†ã‚­ã‚¹ãƒˆãªã©ï¼‰ãŒãƒ’ãƒƒãƒˆã—ãŸå ´åˆã€è¦ªã®ãƒœã‚¿ãƒ³ã‚’æ¢ã™
                     Selectable parentSelectable = null;
                     if (targetObject.GetComponent<Selectable>() == null)
                     {
-                        // eŠK‘w‚ğ‚½‚Ç‚Á‚ÄSelectable‚ÂƒIƒuƒWƒFƒNƒg‚ğ’T‚·
+                        // è¦ªéšå±¤ã‚’ãŸã©ã£ã¦SelectableæŒã¤ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’æ¢ã™
                         Transform parent = targetObject.transform.parent;
                         while (parent != null)
                         {
@@ -743,44 +758,44 @@ public class VRLaserPointer : MonoBehaviour
 
                     hitDistance = rayDistance;
 
-                    // ƒŒ[ƒU[‚ÌI“_ˆÊ’u‚ğİ’è
+                    // ãƒ¬ãƒ¼ã‚¶ãƒ¼ã®çµ‚ç‚¹ä½ç½®ã‚’è¨­å®š
                     float visualDistance = Mathf.Min(hitDistance, maxVisualDistance);
                     Vector3 visualEndPoint = startPos + direction * visualDistance;
 
-                    // ƒŒ[ƒU[‚Ì•`‰æ‚ğXV
+                    // ãƒ¬ãƒ¼ã‚¶ãƒ¼ã®æç”»ã‚’æ›´æ–°
                     if (lineRenderer != null)
                     {
                         lineRenderer.SetPosition(1, visualEndPoint);
                     }
 
-                    // ƒqƒbƒgˆÊ’u‚Éƒhƒbƒg‚ğ•\¦
+                    // ãƒ’ãƒƒãƒˆä½ç½®ã«ãƒ‰ãƒƒãƒˆã‚’è¡¨ç¤º
                     if (hitPoint != null && pointerDot != null)
                     {
                         hitPoint.position = worldPos;
-                        pointerDot.SetActive(!isDragging); // ƒhƒ‰ƒbƒO’†‚Íƒhƒbƒg‚ğ”ñ•\¦
+                        pointerDot.SetActive(!isDragging); // ãƒ‰ãƒ©ãƒƒã‚°ä¸­ã¯ãƒ‰ãƒƒãƒˆã‚’éè¡¨ç¤º
 
-                        // ƒgƒŠƒK[‚ª‰Ÿ‚³‚ê‚Ä‚¢‚éê‡‚Íƒhƒbƒg‚ÌF‚ğ•ÏX
+                        // ãƒˆãƒªã‚¬ãƒ¼ãŒæŠ¼ã•ã‚Œã¦ã„ã‚‹å ´åˆã¯ãƒ‰ãƒƒãƒˆã®è‰²ã‚’å¤‰æ›´
                         if (dotRenderer != null)
                         {
                             dotRenderer.material.color = triggerPressed ? dotPressedColor : dotColor;
                         }
                     }
 
-                    // UIƒ^[ƒQƒbƒg‚ğ•Û‘¶
+                    // UIã‚¿ãƒ¼ã‚²ãƒƒãƒˆã‚’ä¿å­˜
                     currentTarget = targetObject;
 
-                    // ’Êí‚Ìƒ|ƒCƒ“ƒ^Enter/Exitˆ—
+                    // é€šå¸¸ã®ãƒã‚¤ãƒ³ã‚¿Enter/Exitå‡¦ç†
                     HandlePointerEnterExit(currentTarget, lastTarget);
 
-                    return true; // UI‚Æ‚ÌŒğ·‚ ‚è
+                    return true; // UIã¨ã®äº¤å·®ã‚ã‚Š
                 }
             }
 
-            return false; // UI‚Æ‚ÌŒğ·‚È‚µ
+            return false; // UIã¨ã®äº¤å·®ãªã—
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] CheckUIRaycast ƒGƒ‰[: {e.Message}\n{e.StackTrace}");
+            Debug.LogError($"[LaserPointer] CheckUIRaycast ã‚¨ãƒ©ãƒ¼: {e.Message}\n{e.StackTrace}");
             return false;
         }
     }
@@ -789,13 +804,13 @@ public class VRLaserPointer : MonoBehaviour
     {
         try
         {
-            // ‘O‚Ìƒ^[ƒQƒbƒg‚©‚çExit
+            // å‰ã®ã‚¿ãƒ¼ã‚²ãƒƒãƒˆã‹ã‚‰Exit
             if (last != null && last != current)
             {
                 HandlePointerExit(last);
             }
 
-            // V‚µ‚¢ƒ^[ƒQƒbƒg‚ÉEnter
+            // æ–°ã—ã„ã‚¿ãƒ¼ã‚²ãƒƒãƒˆã«Enter
             if (current != null && current != last)
             {
                 HandlePointerEnter(current);
@@ -803,7 +818,7 @@ public class VRLaserPointer : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] HandlePointerEnterExit ƒGƒ‰[: {e.Message}");
+            Debug.LogError($"[LaserPointer] HandlePointerEnterExit ã‚¨ãƒ©ãƒ¼: {e.Message}");
         }
     }
 
@@ -813,40 +828,40 @@ public class VRLaserPointer : MonoBehaviour
         {
             if (go == null)
             {
-                Debug.LogWarning("[LaserPointer] HandlePointerEnter: go‚ªnull‚Å‚·");
+                Debug.LogWarning("[LaserPointer] HandlePointerEnter: goãŒnullã§ã™");
                 return;
             }
 
-            Debug.Log($"[LaserPointer] ƒ|ƒCƒ“ƒ^[Enter: {go.name}");
+            Debug.Log($"[LaserPointer] ãƒã‚¤ãƒ³ã‚¿ãƒ¼Enter: {go.name}");
 
-            // PointerEnterƒCƒxƒ“ƒg‚ğ”­M
+            // PointerEnterã‚¤ãƒ™ãƒ³ãƒˆã‚’ç™ºä¿¡
             cachedPointerData.pointerEnter = go;
             cachedPointerData.position = pointerData.position;
 
-            // SelectableƒRƒ“ƒ|[ƒlƒ“ƒg‚É‘Î‚µ‚ÄƒnƒCƒ‰ƒCƒgˆ—
+            // Selectableã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã«å¯¾ã—ã¦ãƒã‚¤ãƒ©ã‚¤ãƒˆå‡¦ç†
             Selectable selectable = go.GetComponent<Selectable>();
             if (selectable != null)
             {
                 selectable.OnPointerEnter(cachedPointerData);
 
-                // ƒ{ƒ^ƒ“‚É’¼Š´“I‚ÈƒtƒB[ƒhƒoƒbƒN‚ğ“K—p
+                // ãƒœã‚¿ãƒ³ã«ç›´æ„Ÿçš„ãªãƒ•ã‚£ãƒ¼ãƒ‰ãƒãƒƒã‚¯ã‚’é©ç”¨
                 ColorBlock colors = selectable.colors;
                 Image image = go.GetComponent<Image>();
                 if (image != null)
                 {
-                    // F‚Ì•ÏX‚ğ‹­§“I‚É“K—p
+                    // è‰²ã®å¤‰æ›´ã‚’å¼·åˆ¶çš„ã«é©ç”¨
                     Color targetColor = colors.highlightedColor;
                     image.color = targetColor;
                     image.CrossFadeColor(targetColor, colors.fadeDuration, true, true);
                 }
             }
 
-            // ƒCƒxƒ“ƒg‚ğ”­M
+            // ã‚¤ãƒ™ãƒ³ãƒˆã‚’ç™ºä¿¡
             ExecuteEvents.Execute(go, cachedPointerData, ExecuteEvents.pointerEnterHandler);
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] HandlePointerEnter ƒGƒ‰[: {e.Message}");
+            Debug.LogError($"[LaserPointer] HandlePointerEnter ã‚¨ãƒ©ãƒ¼: {e.Message}");
         }
     }
 
@@ -856,23 +871,23 @@ public class VRLaserPointer : MonoBehaviour
         {
             if (go == null)
             {
-                Debug.LogWarning("[LaserPointer] HandlePointerExit: go‚ªnull‚Å‚·");
+                Debug.LogWarning("[LaserPointer] HandlePointerExit: goãŒnullã§ã™");
                 return;
             }
 
-            Debug.Log($"[LaserPointer] ƒ|ƒCƒ“ƒ^[Exit: {go.name}");
+            Debug.Log($"[LaserPointer] ãƒã‚¤ãƒ³ã‚¿ãƒ¼Exit: {go.name}");
 
-            // PointerExitƒCƒxƒ“ƒg‚ğ”­M
+            // PointerExitã‚¤ãƒ™ãƒ³ãƒˆã‚’ç™ºä¿¡
             cachedPointerData.pointerEnter = null;
             cachedPointerData.position = pointerData.position;
 
-            // SelectableƒRƒ“ƒ|[ƒlƒ“ƒg‚É‘Î‚µ‚Ä‚ÌƒnƒCƒ‰ƒCƒg‰ğœ
+            // Selectableã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã«å¯¾ã—ã¦ã®ãƒã‚¤ãƒ©ã‚¤ãƒˆè§£é™¤
             Selectable selectable = go.GetComponent<Selectable>();
             if (selectable != null)
             {
                 selectable.OnPointerExit(cachedPointerData);
 
-                // ƒ{ƒ^ƒ“‚ÌƒtƒB[ƒhƒoƒbƒN‚ğŒ³‚É–ß‚·
+                // ãƒœã‚¿ãƒ³ã®ãƒ•ã‚£ãƒ¼ãƒ‰ãƒãƒƒã‚¯ã‚’å…ƒã«æˆ»ã™
                 ColorBlock colors = selectable.colors;
                 Image image = go.GetComponent<Image>();
                 if (image != null)
@@ -881,10 +896,10 @@ public class VRLaserPointer : MonoBehaviour
                 }
             }
 
-            // ƒCƒxƒ“ƒg‚ğ”­M
+            // ã‚¤ãƒ™ãƒ³ãƒˆã‚’ç™ºä¿¡
             ExecuteEvents.Execute(go, cachedPointerData, ExecuteEvents.pointerExitHandler);
 
-            // ƒgƒŠƒK[‚ª‰Ÿ‚³‚ê‚Ä‚¢‚½ê‡‚Í‰ğœ
+            // ãƒˆãƒªã‚¬ãƒ¼ãŒæŠ¼ã•ã‚Œã¦ã„ãŸå ´åˆã¯è§£é™¤
             if (triggerPressed)
             {
                 HandlePointerUp(go);
@@ -892,7 +907,7 @@ public class VRLaserPointer : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] HandlePointerExit ƒGƒ‰[: {e.Message}");
+            Debug.LogError($"[LaserPointer] HandlePointerExit ã‚¨ãƒ©ãƒ¼: {e.Message}");
         }
     }
 
@@ -902,23 +917,23 @@ public class VRLaserPointer : MonoBehaviour
         {
             if (go == null)
             {
-                Debug.LogWarning("[LaserPointer] HandlePointerDown: go‚ªnull‚Å‚·");
+                Debug.LogWarning("[LaserPointer] HandlePointerDown: goãŒnullã§ã™");
                 return;
             }
 
-            Debug.Log($"[LaserPointer] ƒ|ƒCƒ“ƒ^[Down: {go.name}");
+            Debug.Log($"[LaserPointer] ãƒã‚¤ãƒ³ã‚¿ãƒ¼Down: {go.name}");
 
             cachedPointerData.pointerPress = go;
             cachedPointerData.pressPosition = pointerData.position;
             cachedPointerData.pointerPressRaycast = pointerData.pointerPressRaycast;
 
-            // SelectableƒRƒ“ƒ|[ƒlƒ“ƒg‚É‘Î‚µ‚Ä‚Ì‰Ÿ‰ºˆ—
+            // Selectableã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã«å¯¾ã—ã¦ã®æŠ¼ä¸‹å‡¦ç†
             Selectable selectable = go.GetComponent<Selectable>();
             if (selectable != null)
             {
                 selectable.OnPointerDown(cachedPointerData);
 
-                // ƒ{ƒ^ƒ“‚É’¼Š´“I‚ÈƒtƒB[ƒhƒoƒbƒN‚ğ“K—p
+                // ãƒœã‚¿ãƒ³ã«ç›´æ„Ÿçš„ãªãƒ•ã‚£ãƒ¼ãƒ‰ãƒãƒƒã‚¯ã‚’é©ç”¨
                 ColorBlock colors = selectable.colors;
                 Image image = go.GetComponent<Image>();
                 if (image != null)
@@ -927,12 +942,12 @@ public class VRLaserPointer : MonoBehaviour
                 }
             }
 
-            // ƒCƒxƒ“ƒg‚ğ”­M
+            // ã‚¤ãƒ™ãƒ³ãƒˆã‚’ç™ºä¿¡
             ExecuteEvents.Execute(go, cachedPointerData, ExecuteEvents.pointerDownHandler);
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] HandlePointerDown ƒGƒ‰[: {e.Message}");
+            Debug.LogError($"[LaserPointer] HandlePointerDown ã‚¨ãƒ©ãƒ¼: {e.Message}");
         }
     }
 
@@ -942,22 +957,22 @@ public class VRLaserPointer : MonoBehaviour
         {
             if (go == null)
             {
-                Debug.LogWarning("[LaserPointer] HandlePointerUp: go‚ªnull‚Å‚·");
+                Debug.LogWarning("[LaserPointer] HandlePointerUp: goãŒnullã§ã™");
                 return;
             }
 
-            Debug.Log($"[LaserPointer] ƒ|ƒCƒ“ƒ^[Up: {go.name}");
+            Debug.Log($"[LaserPointer] ãƒã‚¤ãƒ³ã‚¿ãƒ¼Up: {go.name}");
 
-            // PointerUpƒCƒxƒ“ƒg‚ğ”­M
+            // PointerUpã‚¤ãƒ™ãƒ³ãƒˆã‚’ç™ºä¿¡
             cachedPointerData.position = pointerData.position;
 
-            // SelectableƒRƒ“ƒ|[ƒlƒ“ƒg‚Ìˆ—
+            // Selectableã‚³ãƒ³ãƒãƒ¼ãƒãƒ³ãƒˆã®å‡¦ç†
             Selectable selectable = go.GetComponent<Selectable>();
             if (selectable != null)
             {
                 selectable.OnPointerUp(cachedPointerData);
 
-                // ƒ{ƒ^ƒ“‚ÌƒtƒB[ƒhƒoƒbƒNˆ—
+                // ãƒœã‚¿ãƒ³ã®ãƒ•ã‚£ãƒ¼ãƒ‰ãƒãƒƒã‚¯å‡¦ç†
                 ColorBlock colors = selectable.colors;
                 Image image = go.GetComponent<Image>();
                 if (image != null)
@@ -966,13 +981,13 @@ public class VRLaserPointer : MonoBehaviour
                 }
             }
 
-            // ƒCƒxƒ“ƒg‚ğ”­M
+            // ã‚¤ãƒ™ãƒ³ãƒˆã‚’ç™ºä¿¡
             ExecuteEvents.Execute(go, cachedPointerData, ExecuteEvents.pointerUpHandler);
 
-            // ƒNƒŠƒbƒNƒCƒxƒ“ƒg‚ğ”­M
+            // ã‚¯ãƒªãƒƒã‚¯ã‚¤ãƒ™ãƒ³ãƒˆã‚’ç™ºä¿¡
             if (cachedPointerData.pointerPress == go)
             {
-                Debug.Log($"[LaserPointer] ƒNƒŠƒbƒN: {go.name}");
+                Debug.Log($"[LaserPointer] ã‚¯ãƒªãƒƒã‚¯: {go.name}");
                 ExecuteEvents.Execute(go, cachedPointerData, ExecuteEvents.pointerClickHandler);
             }
 
@@ -980,7 +995,7 @@ public class VRLaserPointer : MonoBehaviour
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] HandlePointerUp ƒGƒ‰[: {e.Message}");
+            Debug.LogError($"[LaserPointer] HandlePointerUp ã‚¨ãƒ©ãƒ¼: {e.Message}");
         }
     }
 
@@ -988,10 +1003,10 @@ public class VRLaserPointer : MonoBehaviour
     {
         try
         {
-            // ƒfƒoƒbƒOî•ñ
-            Debug.Log("[LaserPointer] ƒgƒŠƒK[‰Ÿ‰º: ƒ^[ƒQƒbƒg = " + (currentTarget != null ? currentTarget.name : "‚È‚µ"));
+            // ãƒ‡ãƒãƒƒã‚°æƒ…å ±
+            Debug.Log("[LaserPointer] ãƒˆãƒªã‚¬ãƒ¼æŠ¼ä¸‹: ã‚¿ãƒ¼ã‚²ãƒƒãƒˆ = " + (currentTarget != null ? currentTarget.name : "ãªã—"));
 
-            // ƒhƒbƒgF‚ğ•ÏX
+            // ãƒ‰ãƒƒãƒˆè‰²ã‚’å¤‰æ›´
             if (pointerDot != null && pointerDot.activeSelf && dotRenderer != null)
             {
                 dotRenderer.material.color = dotPressedColor;
@@ -999,18 +1014,18 @@ public class VRLaserPointer : MonoBehaviour
 
             if (currentTarget != null)
             {
-                // ƒhƒ‰ƒbƒOˆ—‚ÌŠJn€”õ
+                // ãƒ‰ãƒ©ãƒƒã‚°å‡¦ç†ã®é–‹å§‹æº–å‚™
                 dragStartPosition = pointerData.position;
                 draggedObject = currentTarget;
                 dragThresholdMet = false;
 
-                // ƒ|ƒCƒ“ƒ^ƒ_ƒEƒ“‚Ìˆ—
+                // ãƒã‚¤ãƒ³ã‚¿ãƒ€ã‚¦ãƒ³ã®å‡¦ç†
                 HandlePointerDown(currentTarget);
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] TriggerDown ƒGƒ‰[: {e.Message}");
+            Debug.LogError($"[LaserPointer] TriggerDown ã‚¨ãƒ©ãƒ¼: {e.Message}");
         }
     }
 
@@ -1018,24 +1033,24 @@ public class VRLaserPointer : MonoBehaviour
     {
         try
         {
-            // ƒhƒbƒgF‚ğŒ³‚É–ß‚·
+            // ãƒ‰ãƒƒãƒˆè‰²ã‚’å…ƒã«æˆ»ã™
             if (pointerDot != null && pointerDot.activeSelf && dotRenderer != null)
             {
                 dotRenderer.material.color = dotColor;
             }
 
-            // ƒhƒ‰ƒbƒOI—¹ˆ—
+            // ãƒ‰ãƒ©ãƒƒã‚°çµ‚äº†å‡¦ç†
             if (isDragging && draggedObject != null)
             {
-                Debug.Log($"[LaserPointer] ƒhƒ‰ƒbƒOI—¹: ƒIƒuƒWƒFƒNƒg={draggedObject.name}");
+                Debug.Log($"[LaserPointer] ãƒ‰ãƒ©ãƒƒã‚°çµ‚äº†: ã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆ={draggedObject.name}");
 
-                // ƒhƒ‰ƒbƒOI—¹ˆ—
+                // ãƒ‰ãƒ©ãƒƒã‚°çµ‚äº†å‡¦ç†
                 cachedPointerData.position = pointerData.position;
                 cachedPointerData.dragging = false;
 
                 ExecuteEvents.Execute(draggedObject, cachedPointerData, ExecuteEvents.endDragHandler);
 
-                // ƒhƒƒbƒvƒCƒxƒ“ƒg‚Ìˆ—
+                // ãƒ‰ãƒ­ãƒƒãƒ—ã‚¤ãƒ™ãƒ³ãƒˆã®å‡¦ç†
                 if (currentTarget != null)
                 {
                     ExecuteEvents.Execute(currentTarget, cachedPointerData, ExecuteEvents.dropHandler);
@@ -1045,7 +1060,7 @@ public class VRLaserPointer : MonoBehaviour
                 draggedObject = null;
                 dragThresholdMet = false;
 
-                // ƒhƒ‰ƒbƒOI—¹AŒ»İ‚Ìƒ^[ƒQƒbƒg‚ª‚ ‚ê‚Îƒhƒbƒg‚ğ•\¦
+                // ãƒ‰ãƒ©ãƒƒã‚°çµ‚äº†æ™‚ã€ç¾åœ¨ã®ã‚¿ãƒ¼ã‚²ãƒƒãƒˆãŒã‚ã‚Œã°ãƒ‰ãƒƒãƒˆã‚’è¡¨ç¤º
                 if (currentTarget != null && pointerDot != null)
                 {
                     pointerDot.SetActive(true);
@@ -1054,13 +1069,13 @@ public class VRLaserPointer : MonoBehaviour
 
             if (currentTarget != null)
             {
-                // ƒ|ƒCƒ“ƒ^ƒAƒbƒv‚Ìˆ—
+                // ãƒã‚¤ãƒ³ã‚¿ã‚¢ãƒƒãƒ—ã®å‡¦ç†
                 HandlePointerUp(currentTarget);
             }
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] TriggerUp ƒGƒ‰[: {e.Message}");
+            Debug.LogError($"[LaserPointer] TriggerUp ã‚¨ãƒ©ãƒ¼: {e.Message}");
         }
     }
 
@@ -1068,35 +1083,50 @@ public class VRLaserPointer : MonoBehaviour
     {
         try
         {
-            // ƒfƒoƒbƒOƒƒO‚ğŠmÀ‚É•\¦
-            Debug.LogError("[LaserPointer] Aƒ{ƒ^ƒ“‚ª‰Ÿ‚³‚ê‚Ü‚µ‚½I"); // ƒGƒ‰[ƒŒƒxƒ‹‚Åo—Í‚µ‚ÄŠmÀ‚É•\¦
+            // ãƒ‡ãƒã‚¦ãƒ³ã‚¹å‡¦ç† - çŸ­æ™‚é–“å†…ã®é€£ç¶šå‘¼ã³å‡ºã—ã‚’é˜²æ­¢
+            if (aButtonJustPressed)
+            {
+                Debug.Log("[LaserPointer] Aãƒœã‚¿ãƒ³é€£ç¶šæŠ¼ä¸‹ã‚’ç„¡è¦–ã—ã¾ã—ãŸï¼ˆãƒ‡ãƒã‚¦ãƒ³ã‚¹æœŸé–“ä¸­ï¼‰");
+                return;
+            }
+
+            // æ™‚é–“ã¨ãƒ•ãƒ©ã‚°ã‚’è¨˜éŒ²
+            aButtonJustPressed = true;
+            lastAButtonPressTime = Time.time;
+
+            // ãƒ‡ãƒãƒƒã‚°ãƒ­ã‚°
+            Debug.Log("[LaserPointer] Aãƒœã‚¿ãƒ³ãŒæŠ¼ã•ã‚Œã¾ã—ãŸ");
 
             if (panelVisibilityController == null)
             {
-                Debug.LogError("[LaserPointer] PanelVisibilityController is null");
+                Debug.LogWarning("[LaserPointer] PanelVisibilityController is null");
 
-                // Äæ“¾‚ğ‚İ‚é
+                // å†å–å¾—ã‚’è©¦ã¿ã‚‹
                 panelVisibilityController = FindFirstObjectByType<PanelVisibilityController>();
                 if (panelVisibilityController == null)
                 {
-                    Debug.LogError("[LaserPointer] PanelVisibilityController‚ªŒ©‚Â‚©‚è‚Ü‚¹‚ñ");
+                    Debug.LogError("[LaserPointer] PanelVisibilityControllerãŒè¦‹ã¤ã‹ã‚Šã¾ã›ã‚“");
                     return;
                 }
             }
 
-            // Œ»İ‚Ìó‘Ô‚ğƒƒO‚É‹L˜^
+            // ç¾åœ¨ã®çŠ¶æ…‹ã‚’ãƒ­ã‚°ã«è¨˜éŒ²
             bool isInViewRange = panelVisibilityController.IsInViewRange();
-            bool isForcedState = panelVisibilityController.IsForcedState();
-            bool isForcedVisible = panelVisibilityController.IsForcedVisible();
+            bool isPanelActive = panelVisibilityController.IsPanelActive;
+            bool isFading = panelVisibilityController.IsFading();
 
-            Debug.Log($"[LaserPointer] Aƒ{ƒ^ƒ“‰Ÿ‰º‚Ìó‘Ô: ‹–ìŠp“à={isInViewRange}, ‹­§ó‘Ô={isForcedState}, ‹­§•\¦={isForcedVisible}");
+            Debug.Log($"[LaserPointer] Aãƒœã‚¿ãƒ³æŠ¼ä¸‹æ™‚ã®çŠ¶æ…‹: è¦–é‡è§’å†…={isInViewRange}, ãƒ‘ãƒãƒ«ã‚¢ã‚¯ãƒ†ã‚£ãƒ–={isPanelActive}, ãƒ•ã‚§ãƒ¼ãƒ‰ä¸­={isFading}");
 
-            // ‹­§“I‚Éƒpƒlƒ‹‚Ì•\¦/”ñ•\¦‚ğØ‚è‘Ö‚¦‚é
-            panelVisibilityController.ToggleForcedVisibility();
+            // ãƒ‘ãƒãƒ«ã‚¢ã‚¯ãƒ†ã‚£ãƒ–çŠ¶æ…‹ã‚’åˆ‡ã‚Šæ›¿ãˆã‚‹
+            panelVisibilityController.TogglePanelActive();
+
+            // ãƒ­ã‚°ã‚’å‡ºåŠ›ã—ã¦ç¢ºèª
+            isPanelActive = panelVisibilityController.IsPanelActive;
+            Debug.Log($"[LaserPointer] ãƒ‘ãƒãƒ«ã‚¢ã‚¯ãƒ†ã‚£ãƒ–çŠ¶æ…‹åˆ‡æ›¿å¾Œ: {isPanelActive}");
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"[LaserPointer] Aƒ{ƒ^ƒ“ˆ—’†‚ÉƒGƒ‰[: {e.Message}\n{e.StackTrace}");
+            Debug.LogError($"[LaserPointer] Aãƒœã‚¿ãƒ³å‡¦ç†ä¸­ã«ã‚¨ãƒ©ãƒ¼: {e.Message}\n{e.StackTrace}");
         }
     }
 }
