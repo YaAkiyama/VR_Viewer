@@ -719,6 +719,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 4845558853040865782, guid: 052faaac586de48259a63d0c4782560b, type: 3}
     - target: {fileID: 318003368210974287, guid: 7165846fcae3ad14b838a69b9c32855b, type: 3}
+      propertyPath: thumbnailScrollRect
+      value: 
+      objectReference: {fileID: 1807320142}
+    - target: {fileID: 318003368210974287, guid: 7165846fcae3ad14b838a69b9c32855b, type: 3}
       propertyPath: panelVisibilityController
       value: 
       objectReference: {fileID: 904113159}
@@ -2244,6 +2248,10 @@ PrefabInstance:
       propertyPath: uiRaycaster
       value: 
       objectReference: {fileID: 589385974}
+    - target: {fileID: 318003368210974287, guid: 7165846fcae3ad14b838a69b9c32855b, type: 3}
+      propertyPath: thumbnailScrollRect
+      value: 
+      objectReference: {fileID: 1807320142}
     - target: {fileID: 318003368210974287, guid: 7165846fcae3ad14b838a69b9c32855b, type: 3}
       propertyPath: panelVisibilityController
       value: 
@@ -4707,6 +4715,9 @@ MonoBehaviour:
   minViewAngleX: -52
   maxViewAngleX: 52
   fadeSpeed: 5
+  maxAlpha: 1
+  isPanelActive: 1
+  thumbnailCanvas: {fileID: 929691248}
 --- !u!4 &904113160
 Transform:
   m_ObjectHideFlags: 0
@@ -4844,7 +4855,7 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 929691248}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 0.001, y: 0.001, z: 0.001}
   m_ConstrainProportionsScale: 0
@@ -4854,7 +4865,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: -1109.9537, y: 1.4399842}
   m_SizeDelta: {x: 600, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &929691253
@@ -4981,7 +4992,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0.007663422, y: 0}
   m_SizeDelta: {x: 411, y: 300}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!1 &946687400
