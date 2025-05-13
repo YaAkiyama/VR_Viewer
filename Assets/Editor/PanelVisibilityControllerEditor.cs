@@ -43,6 +43,20 @@ public class PanelVisibilityControllerEditor : Editor
 
         EditorGUILayout.EndHorizontal();
 
+        // パネルアクティブ状態の制御を追加
+        EditorGUILayout.Space();
+        EditorGUILayout.LabelField("パネルアクティブ制御", EditorStyles.boldLabel);
+
+        // Unity PlayMode時のみボタンを有効にする
+        GUI.enabled = Application.isPlaying;
+
+        if (GUILayout.Button("パネルアクティブをトグル"))
+        {
+            controller.TogglePanelActive();
+        }
+
+        GUI.enabled = true; // ボタンの有効状態をリセット
+
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("プリセット", EditorStyles.boldLabel);
 
