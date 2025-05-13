@@ -20,6 +20,7 @@ public class PanelVisibilityController : MonoBehaviour
     private bool isInViewRange = true;    // 視野角内にいるかどうか
     private bool isFading = false;        // フェード中かどうか
     private Coroutine fadeCoroutine;
+    private bool isStateTransitioning = false; // 状態遷移中フラグ
 
     // プロパティを公開
     public float MinViewAngleX => minViewAngleX;
@@ -110,6 +111,12 @@ public class PanelVisibilityController : MonoBehaviour
     {
         try
         {
+            // 状態遷移中は視野角チェックをスキップ
+            if (isStateTransitioning)
+            {
+                return;
+            }
+            
             if (cameraTransform == null)
             {
                 // カメラが見つからない場合は再取得を試みる
@@ -154,7 +161,8 @@ public class PanelVisibilityController : MonoBehaviour
                           $"視野角範囲={minViewAngleX}～{maxViewAngleX}, " +
                           $"視野角内={isInViewRange}, " +
                           $"フェード中={isFading}, " + 
-                          $"パネルアクティブ={isPanelActive}");
+                          $"パネルアクティブ={isPanelActive}, " +
+                          $"状態遷移中={isStateTransitioning}");
             }
 
             // パネルがアクティブでない場合は視野角による表示制御をスキップ
@@ -220,6 +228,7 @@ public class PanelVisibilityController : MonoBehaviour
     private IEnumerator DynamicFade()
     {
         isFading = true;
+        isStateTransitioning = true;  // 状態遷移中フラグをON
 
         Debug.Log($"[PanelVisibilityController] 動的フェード開始");
 
@@ -240,6 +249,8 @@ public class PanelVisibilityController : MonoBehaviour
         float targetAlpha = isPanelActive && isInViewRange ? maxAlpha : 0f;
 
         Debug.LogError($"[PanelVisibilityController] フェード開始: ターゲットAlpha={targetAlpha}, パネルアクティブ={isPanelActive}, 視野角内={isInViewRange}");
+
+        bool targetStateChanged = false;
 
         while (elapsedTime < duration)
         {
@@ -276,6 +287,7 @@ public class PanelVisibilityController : MonoBehaviour
                 Debug.LogError($"[PanelVisibilityController] フェード中に状態が変化: パネルアクティブ={isPanelActive}, 視野角内={isInViewRange}, 新ターゲットAlpha={newTargetAlpha}");
                 
                 targetAlpha = newTargetAlpha;
+                targetStateChanged = true;
                 
                 // 現在の値を開始値として記録し直す
                 startAlphas.Clear();
@@ -304,13 +316,21 @@ public class PanelVisibilityController : MonoBehaviour
             }
         }
 
-        Debug.LogError($"[PanelVisibilityController] フェード完了: Alpha={targetAlpha}, Interactable={finalInteractable}");
+        Debug.LogError($"[PanelVisibilityController] フェード完了: Alpha={targetAlpha}, Interactable={finalInteractable}, 状態変更={targetStateChanged}");
         isFading = false;
+        isStateTransitioning = false;  // 状態遷移中フラグをOFF
     }
 
     // パネルアクティブ状態を切り替えるメソッド（A ボタン用）
     public void TogglePanelActive()
     {
+        // 状態遷移中なら処理しない
+        if (isStateTransitioning)
+        {
+            Debug.LogWarning("[PanelVisibilityController] 状態遷移中のためTogglePanelActiveをスキップ");
+            return;
+        }
+        
         // 現在の値を反転
         bool previousState = isPanelActive;
         isPanelActive = !isPanelActive;
@@ -330,6 +350,20 @@ public class PanelVisibilityController : MonoBehaviour
             // 非アクティブ化に伴うフェードアウトを開始
             fadeCoroutine = StartCoroutine(DynamicFade());
             Debug.LogError("[PanelVisibilityController] パネル非アクティブ化に伴うフェードアウト開始");
+        }
+        // アクティブに変更された場合も新しいフェードを開始
+        else if (!previousState && isPanelActive)
+        {
+            // フェード処理が既に実行中なら停止
+            if (fadeCoroutine != null)
+            {
+                StopCoroutine(fadeCoroutine);
+                isFading = false;
+            }
+            
+            // アクティブ化に伴うフェードインを開始
+            fadeCoroutine = StartCoroutine(DynamicFade());
+            Debug.LogError("[PanelVisibilityController] パネルアクティブ化に伴うフェードイン開始");
         }
     }
 
@@ -459,27 +493,42 @@ public class PanelVisibilityController : MonoBehaviour
     // パネルアクティブ状態を設定するメソッド
     public void SetPanelActive(bool active)
     {
-        if (isPanelActive != active)
+        // 状態が変わらない場合は何もしない
+        if (isPanelActive == active) 
         {
-            bool previousState = isPanelActive;
-            isPanelActive = active;
-            
-            Debug.LogError($"[PanelVisibilityController] パネルアクティブ状態設定: {previousState} -> {isPanelActive}");
-            
-            // 非アクティブに変更された場合、強制的にフェードアウト
-            if (previousState && !isPanelActive)
-            {
-                // フェード処理が既に実行中なら停止
-                if (fadeCoroutine != null)
-                {
-                    StopCoroutine(fadeCoroutine);
-                    isFading = false;
-                }
-                
-                // 非アクティブ化に伴うフェードアウトを開始
-                fadeCoroutine = StartCoroutine(DynamicFade());
-                Debug.LogError("[PanelVisibilityController] パネル非アクティブ化に伴うフェードアウト開始");
-            }
+            Debug.Log($"[PanelVisibilityController] 同じパネルアクティブ状態のため変更なし: {active}");
+            return;
+        }
+        
+        // 状態遷移中なら処理しない
+        if (isStateTransitioning)
+        {
+            Debug.LogWarning("[PanelVisibilityController] 状態遷移中のためSetPanelActiveをスキップ");
+            return;
+        }
+
+        bool previousState = isPanelActive;
+        isPanelActive = active;
+        
+        Debug.LogError($"[PanelVisibilityController] パネルアクティブ状態設定: {previousState} -> {isPanelActive}");
+        
+        // 現在のフェードを中断
+        if (fadeCoroutine != null)
+        {
+            StopCoroutine(fadeCoroutine);
+            isFading = false;
+        }
+        
+        // 新しいフェードを開始
+        fadeCoroutine = StartCoroutine(DynamicFade());
+        
+        if (previousState && !isPanelActive)
+        {
+            Debug.LogError("[PanelVisibilityController] パネル非アクティブ化に伴うフェードアウト開始");
+        }
+        else
+        {
+            Debug.LogError("[PanelVisibilityController] パネルアクティブ化に伴うフェードイン開始");
         }
     }
 
