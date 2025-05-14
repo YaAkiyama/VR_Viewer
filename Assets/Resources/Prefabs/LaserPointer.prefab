@@ -26,7 +26,7 @@ Transform:
   m_GameObject: {fileID: 1207098880889513407}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.033478815, y: 0.008641537, z: 0.33398545}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -46,10 +46,29 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   rayOrigin: {fileID: 0}
   maxRayDistance: 100
-  rayVisualLength: 5
-  rayWidth: 0.01
-  rayColor: {r: 0, g: 0.5, b: 1, a: 0.5}
+  maxVisualDistance: 0.8
+  rayStartWidth: 0.003
+  rayEndWidth: 0.0005
+  rayColor: {r: 0, g: 0.8, b: 1, a: 0.7}
+  rayEndColor: {r: 0, g: 0.8, b: 1, a: 0}
   pointerDotPrefab: {fileID: 1334526610724854475, guid: 73c32b83a9fe0044e92a5a0f634f3cf6, type: 3}
-  pointerDotScale: 0.01
+  dotScale: 0.01
+  dotColor: {r: 1, g: 1, b: 1, a: 1}
+  dotPressedColor: {r: 1, g: 0, b: 0, a: 1}
   triggerAction: {fileID: -5735436463599460788, guid: 052faaac586de48259a63d0c4782560b, type: 3}
   aButtonAction: {fileID: -4036849929407585807, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  leftJoystickAction: {fileID: -9164302908372132630, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  rightJoystickAction: {fileID: -9164302908372132630, guid: 052faaac586de48259a63d0c4782560b, type: 3}
+  uiRaycaster: {fileID: 0}
+  eventSystem: {fileID: 0}
+  targetCanvasList: []
+  thumbnailScrollRect: {fileID: 0}
+  panelVisibilityController: {fileID: 0}
+  processAllCanvases: 1
+  useClosestHit: 1
+  dragThresholdDistance: 0.5
+  scrollSensitivity: 0.5
+  horizontalScrollMultiplier: 5
+  invertScrollDirection: 1
+  preventThumbnailSelectionWhileDragging: 1
+  joystickScrollSensitivity: 0.03
