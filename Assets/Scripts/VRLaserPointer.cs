@@ -1095,8 +1095,8 @@ public class VRLaserPointer : MonoBehaviour
         // コントローラーの入力に基づいてスクロール
         float moveAmount = controllerDelta.x * horizontalScrollMultiplier;
         
-        //反転させるためコメントアウト
-        // invertScrollDirectionフラグに基づいてスクロール方向を反転
+//        //反転させるためコメントアウト
+//        // invertScrollDirectionフラグに基づいてスクロール方向を反転
 //        if (invertScrollDirection)
 //        {
 //            moveAmount = -moveAmount;
