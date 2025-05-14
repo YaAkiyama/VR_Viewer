@@ -719,6 +719,10 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 4845558853040865782, guid: 052faaac586de48259a63d0c4782560b, type: 3}
     - target: {fileID: 318003368210974287, guid: 7165846fcae3ad14b838a69b9c32855b, type: 3}
+      propertyPath: maxVisualDistance
+      value: 0.3
+      objectReference: {fileID: 0}
+    - target: {fileID: 318003368210974287, guid: 7165846fcae3ad14b838a69b9c32855b, type: 3}
       propertyPath: scrollSensitivity
       value: 0.1
       objectReference: {fileID: 0}
@@ -2272,6 +2276,10 @@ PrefabInstance:
       propertyPath: uiRaycaster
       value: 
       objectReference: {fileID: 589385974}
+    - target: {fileID: 318003368210974287, guid: 7165846fcae3ad14b838a69b9c32855b, type: 3}
+      propertyPath: maxVisualDistance
+      value: 0.3
+      objectReference: {fileID: 0}
     - target: {fileID: 318003368210974287, guid: 7165846fcae3ad14b838a69b9c32855b, type: 3}
       propertyPath: scrollSensitivity
       value: 0.1
@@ -4913,7 +4921,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: -1109.9537, y: 1.4399842}
+  m_AnchoredPosition: {x: -2219.9268, y: 2.8800216}
   m_SizeDelta: {x: 600, y: 120}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &929691253
@@ -5040,7 +5048,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
-  m_AnchoredPosition: {x: -0.06537089, y: 0}
+  m_AnchoredPosition: {x: -0.11013106, y: 0}
   m_SizeDelta: {x: 411, y: 300}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!1 &946687400
