@@ -166,12 +166,62 @@ public class LaserMaterialFixHelper : EditorWindow
             lineRenderer.startColor = selectedColor;
             lineRenderer.endColor = endColor;
 
-            // マテリアル更新
-            Material laserMaterial = lineRenderer.material;
-            if (laserMaterial != null)
+            // マテリアル更新または新規作成
+            UpdateMaterial(lineRenderer);
+            
+            EditorUtility.SetDirty(lineRenderer);
+        }
+        else
+        {
+            // LineRendererがない場合は追加して設定
+            lineRenderer = pointer.gameObject.AddComponent<LineRenderer>();
+            
+            lineRenderer.useWorldSpace = true;
+            lineRenderer.startWidth = rayStartWidth;
+            lineRenderer.endWidth = rayEndWidth;
+            lineRenderer.startColor = selectedColor;
+            lineRenderer.endColor = endColor;
+            lineRenderer.positionCount = 2;
+            
+            // 初期位置を設定
+            Transform rayOrigin = pointer.GetRayOrigin();
+            Vector3 startPos = rayOrigin != null ? rayOrigin.position : pointer.transform.position;
+            Vector3 direction = rayOrigin != null ? rayOrigin.forward : pointer.transform.forward;
+            Vector3 endPos = startPos + direction * maxVisualDistance;
+            
+            lineRenderer.SetPosition(0, startPos);
+            lineRenderer.SetPosition(1, endPos);
+            
+            // マテリアルの作成と設定
+            UpdateMaterial(lineRenderer);
+            
+            Debug.Log($"LineRendererを追加: {pointer.gameObject.name}");
+        }
+
+        EditorUtility.SetDirty(pointer);
+        return true;
+    }
+
+    private void UpdateMaterial(LineRenderer lineRenderer)
+    {
+        if (lineRenderer == null) return;
+        
+        // 既存のマテリアルがあれば更新、なければ新規作成
+        Material laserMaterial = lineRenderer.material;
+        bool createNewMaterial = false;
+        
+        if (laserMaterial == null)
+        {
+            createNewMaterial = true;
+        }
+        else
+        {
+            try
             {
+                // マテリアルの更新記録
                 Undo.RecordObject(laserMaterial, "Update Material Color");
                 
+                // マテリアルの色を設定
                 laserMaterial.color = selectedColor;
                 laserMaterial.SetColor("_BaseColor", selectedColor); // URP用
                 laserMaterial.SetColor("_EmissionColor", selectedColor * 1.5f); // 発光効果
@@ -179,29 +229,44 @@ public class LaserMaterialFixHelper : EditorWindow
                 
                 EditorUtility.SetDirty(laserMaterial);
             }
-            else
+            catch (System.Exception)
             {
-                // マテリアルがない場合は新規作成
-                Material newMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+                // マテリアルの更新に失敗した場合は新規作成
+                Debug.LogWarning("既存のマテリアルの更新に失敗しました。新しいマテリアルを作成します。");
+                createNewMaterial = true;
+            }
+        }
+        
+        if (createNewMaterial)
+        {
+            // 新しいマテリアルを作成
+            Material newMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+            if (newMaterial == null)
+            {
+                newMaterial = new Material(Shader.Find("Unlit/Color"));
                 if (newMaterial == null)
                 {
                     newMaterial = new Material(Shader.Find("Standard"));
                 }
-                
-                if (newMaterial != null)
-                {
-                    newMaterial.color = selectedColor;
-                    newMaterial.SetColor("_BaseColor", selectedColor);
-                    newMaterial.SetColor("_EmissionColor", selectedColor * 1.5f);
-                    newMaterial.EnableKeyword("_EMISSION");
-                    lineRenderer.material = newMaterial;
-                }
             }
             
-            EditorUtility.SetDirty(lineRenderer);
+            if (newMaterial != null)
+            {
+                // マテリアルの設定
+                newMaterial.color = selectedColor;
+                newMaterial.SetColor("_BaseColor", selectedColor); // URP用
+                newMaterial.SetColor("_EmissionColor", selectedColor * 1.5f); // 発光効果
+                newMaterial.EnableKeyword("_EMISSION"); // 発光を有効化
+                
+                // マテリアルをレンダラーに設定
+                lineRenderer.material = newMaterial;
+                
+                Debug.Log("新しいマテリアルを作成しました。");
+            }
+            else
+            {
+                Debug.LogError("新しいマテリアルを作成できませんでした。使用可能なシェーダーが見つかりません。");
+            }
         }
-
-        EditorUtility.SetDirty(pointer);
-        return true;
     }
 }
