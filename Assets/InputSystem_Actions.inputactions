@@ -990,6 +990,122 @@
                     "isPartOfComposite": false
                 }
             ]
+        },
+        {
+            "name": "XRI RightHand",
+            "id": "3bcb6841-7b20-4f8c-a84a-6acec4485693",
+            "actions": [
+                {
+                    "name": "PrimaryButton",
+                    "type": "Button",
+                    "id": "7f5167c5-77b5-4ee5-920b-b68fcf8cc4b8",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "Select",
+                    "type": "Button",
+                    "id": "51eb8440-07ed-463b-8c59-d2641bdd612b",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "ThumbstickMove",
+                    "type": "Value",
+                    "id": "a3b12ec1-ae87-4a4d-9a37-6b592521af8d",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "7690be51-20c4-4d7f-9fda-3470b510e6af",
+                    "path": "<XRController>{RightHand}/{PrimaryButton}",
+                    "interactions": "Press",
+                    "processors": "AxisDeadzone(min=0.15,max=0.9)",
+                    "groups": "",
+                    "action": "PrimaryButton",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "002ce75f-a2cc-4f28-93a0-af1157984dcf",
+                    "path": "<XRController>{RightHand}/{TriggerButton}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Select",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "3b6a4a3d-7e58-4f71-9f47-2c1326757072",
+                    "path": "<XRController>{RightHand}/{Primary2DAxisTouch}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ThumbstickMove",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        },
+        {
+            "name": "XRI LeftHand",
+            "id": "6cd8dab5-a3c8-4019-8472-c3cf360ac07b",
+            "actions": [
+                {
+                    "name": "Select",
+                    "type": "Button",
+                    "id": "1b1bf600-97ef-4502-92ba-08cadfb74ae2",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
+                },
+                {
+                    "name": "ThumbstickMove",
+                    "type": "Value",
+                    "id": "9d68e190-f37d-4ce8-8a61-12bd31616ea3",
+                    "expectedControlType": "Vector2",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": true
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "81197293-67ef-42f3-bffc-3d82ae12527d",
+                    "path": "<XRController>{LeftHand}/{TriggerButton}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Select",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "f1cf31f9-9c0e-4bda-96a0-85c1578c9889",
+                    "path": "<XRController>{LeftHand}/{Primary2DAxisTouch}",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ThumbstickMove",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
         }
     ],
     "controlSchemes": [
