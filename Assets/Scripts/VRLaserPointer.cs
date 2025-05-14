@@ -265,6 +265,26 @@ public class VRLaserPointer : MonoBehaviour
             else
             {
                 Debug.LogWarning("[LaserPointer] leftJoystickActionが設定されていません");
+                
+                // 入力アクションを探す
+                var asset = Resources.FindObjectsOfTypeAll<InputActionAsset>().FirstOrDefault(a => a.name == "InputSystem_Actions");
+                if (asset != null)
+                {
+                    var leftHandMap = asset.FindActionMap("XRI LeftHand");
+                    if (leftHandMap != null)
+                    {
+                        var thumbstickAction = leftHandMap.FindAction("ThumbstickMove");
+                        if (thumbstickAction != null)
+                        {
+                            // InputActionReferenceを作成する
+                            leftJoystickAction = ScriptableObject.CreateInstance<InputActionReference>();
+                            leftJoystickAction.name = "LeftThumbstickMove";
+                            // inputActionReferenceにアクションを設定する方法はないので、代わりにアクションを直接有効化する
+                            thumbstickAction.Enable();
+                            Debug.LogError($"[LaserPointer] 左ジョイスティックアクションを自動検出して有効化: {thumbstickAction.name}");
+                        }
+                    }
+                }
             }
 
             if (rightJoystickAction != null)
@@ -275,6 +295,26 @@ public class VRLaserPointer : MonoBehaviour
             else
             {
                 Debug.LogWarning("[LaserPointer] rightJoystickActionが設定されていません");
+                
+                // 入力アクションを探す
+                var asset = Resources.FindObjectsOfTypeAll<InputActionAsset>().FirstOrDefault(a => a.name == "InputSystem_Actions");
+                if (asset != null)
+                {
+                    var rightHandMap = asset.FindActionMap("XRI RightHand");
+                    if (rightHandMap != null)
+                    {
+                        var thumbstickAction = rightHandMap.FindAction("ThumbstickMove");
+                        if (thumbstickAction != null)
+                        {
+                            // InputActionReferenceを作成する
+                            rightJoystickAction = ScriptableObject.CreateInstance<InputActionReference>();
+                            rightJoystickAction.name = "RightThumbstickMove";
+                            // inputActionReferenceにアクションを設定する方法はないので、代わりにアクションを直接有効化する
+                            thumbstickAction.Enable();
+                            Debug.LogError($"[LaserPointer] 右ジョイスティックアクションを自動検出して有効化: {thumbstickAction.name}");
+                        }
+                    }
+                }
             }
 
             // CanvasListを初期化
@@ -581,15 +621,49 @@ public class VRLaserPointer : MonoBehaviour
         try
         {
             // 左ジョイスティックの入力を読み取り
-            if (leftJoystickAction != null)
+            if (leftJoystickAction != null && leftJoystickAction.action != null)
             {
                 leftJoystickValue = leftJoystickAction.action.ReadValue<Vector2>();
             }
+            else
+            {
+                // 入力アクションAssetを直接探す
+                var asset = Resources.FindObjectsOfTypeAll<InputActionAsset>().FirstOrDefault(a => a.name == "InputSystem_Actions");
+                if (asset != null)
+                {
+                    var leftHandMap = asset.FindActionMap("XRI LeftHand");
+                    if (leftHandMap != null)
+                    {
+                        var thumbstickAction = leftHandMap.FindAction("ThumbstickMove");
+                        if (thumbstickAction != null && thumbstickAction.enabled)
+                        {
+                            leftJoystickValue = thumbstickAction.ReadValue<Vector2>();
+                        }
+                    }
+                }
+            }
 
             // 右ジョイスティックの入力を読み取り
-            if (rightJoystickAction != null)
+            if (rightJoystickAction != null && rightJoystickAction.action != null)
             {
                 rightJoystickValue = rightJoystickAction.action.ReadValue<Vector2>();
+            }
+            else
+            {
+                // 入力アクションAssetを直接探す
+                var asset = Resources.FindObjectsOfTypeAll<InputActionAsset>().FirstOrDefault(a => a.name == "InputSystem_Actions");
+                if (asset != null)
+                {
+                    var rightHandMap = asset.FindActionMap("XRI RightHand");
+                    if (rightHandMap != null)
+                    {
+                        var thumbstickAction = rightHandMap.FindAction("ThumbstickMove");
+                        if (thumbstickAction != null && thumbstickAction.enabled)
+                        {
+                            rightJoystickValue = thumbstickAction.ReadValue<Vector2>();
+                        }
+                    }
+                }
             }
 
             // デバッグ用に入力値を出力（値が変わった時のみ）
@@ -639,7 +713,7 @@ public class VRLaserPointer : MonoBehaviour
                 
                 if (Time.frameCount % 30 == 0)
                 {
-                    Debug.LogError($"[LaserPointer] ジョイスティックスクロール: 入力={combinedXInput}, 移動量={moveAmount}, 新位置={normalizedPosition}");
+                    Debug.LogError($"[LaserPointer] ジョイスティックスクロール: 入力={combinedXInput}, 移動量={moveAmount}, 新位置={normalizedPosition}, 反転={invertScrollDirection}");
                 }
             }
             else
