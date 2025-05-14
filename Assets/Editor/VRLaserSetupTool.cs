@@ -23,6 +23,11 @@ public class VRLaserSetupTool : EditorWindow
     private float rayStartWidth = 0.003f;
     private float rayEndWidth = 0.0005f;
     private float maxVisualDistance = 0.8f;
+    
+    // 新しいタブ設定
+    private enum SetupTab { Basic, Advanced, Presets }
+    private SetupTab currentTab = SetupTab.Basic;
+    private string[] tabNames = { "基本設定", "詳細設定", "プリセット" };
 
     private void OnEnable()
     {
@@ -41,15 +46,56 @@ public class VRLaserSetupTool : EditorWindow
             // 左右のコントローラーアンカーを探す
             leftController = cameraRig.transform.Find("LeftControllerAnchor")?.gameObject;
             rightController = cameraRig.transform.Find("RightControllerAnchor")?.gameObject;
+            
+            if (leftController != null)
+            {
+                Debug.Log($"左コントローラーを検出: {leftController.name}");
+            }
+            
+            if (rightController != null)
+            {
+                Debug.Log($"右コントローラーを検出: {rightController.name}");
+            }
         }
     }
 
     private void OnGUI()
     {
-        GUILayout.Label("VRレーザーポインター セットアップ", EditorStyles.boldLabel);
+        EditorGUILayout.LabelField("VRレーザーポインター セットアップ", EditorStyles.boldLabel);
         EditorGUILayout.Space();
-
-        // カメラリグの検出/選択
+        
+        // タブの表示
+        currentTab = (SetupTab)GUILayout.Toolbar((int)currentTab, tabNames);
+        EditorGUILayout.Space();
+        
+        // 選択されたタブに応じて異なるUIを表示
+        switch (currentTab)
+        {
+            case SetupTab.Basic:
+                DrawBasicTab();
+                break;
+            case SetupTab.Advanced:
+                DrawAdvancedTab();
+                break;
+            case SetupTab.Presets:
+                DrawPresetsTab();
+                break;
+        }
+        
+        EditorGUILayout.Space();
+        GUILayout.Label("レーザーポインターのセットアップ", EditorStyles.boldLabel);
+        GUI.enabled = (setupLeft && leftController != null) || (setupRight && rightController != null);
+        
+        if (GUILayout.Button("レーザーポインターをセットアップ"))
+        {
+            SetupLaserPointers();
+        }
+        
+        GUI.enabled = true;
+    }
+    
+    private void DrawBasicTab()
+    {
         GUILayout.Label("カメラリグ設定", EditorStyles.boldLabel);
         cameraRig = EditorGUILayout.ObjectField("Camera Rig", cameraRig, typeof(GameObject), true) as GameObject;
         
@@ -80,10 +126,10 @@ public class VRLaserSetupTool : EditorWindow
         {
             EditorGUILayout.HelpBox("Camera Rigが見つかりません。[BuildingBlock] Camera Rigを検索するか、手動で設定してください。", MessageType.Warning);
         }
-        
-        EditorGUILayout.Space();
-        
-        // レーザープレハブ設定
+    }
+    
+    private void DrawAdvancedTab()
+    {
         GUILayout.Label("レーザー設定", EditorStyles.boldLabel);
         laserPrefab = EditorGUILayout.ObjectField("レーザープレハブ", laserPrefab, typeof(GameObject), false) as GameObject;
         
@@ -98,37 +144,82 @@ public class VRLaserSetupTool : EditorWindow
         
         EditorGUILayout.Space();
         
-        // プリセット
-        GUILayout.Label("プリセット", EditorStyles.boldLabel);
-        EditorGUILayout.BeginHorizontal();
-        if (GUILayout.Button("MetaQuest3 青"))
+        // 既存のレーザーポインターの検索と更新
+        GUILayout.Label("既存レーザーの更新", EditorStyles.boldLabel);
+        
+        if (GUILayout.Button("シーン内の全レーザーを更新"))
+        {
+            UpdateAllLaserPointers();
+        }
+    }
+    
+    private void DrawPresetsTab()
+    {
+        GUILayout.Label("プリセット設定", EditorStyles.boldLabel);
+        EditorGUILayout.HelpBox("プリセットを選択すると、レーザーの見た目が一括設定されます。", MessageType.Info);
+        
+        EditorGUILayout.Space();
+        
+        if (GUILayout.Button("MetaQuest3スタイル (青)"))
         {
             selectedColor = new Color(0.0f, 0.8f, 1.0f, 0.7f);
             rayStartWidth = 0.003f;
             rayEndWidth = 0.0005f;
             maxVisualDistance = 0.8f;
+            EditorUtility.DisplayDialog("プリセット適用", "MetaQuest3スタイル (青) が適用されました。", "OK");
         }
-        if (GUILayout.Button("MetaQuest3 紫"))
+        
+        if (GUILayout.Button("MetaQuest3スタイル (紫)"))
         {
             selectedColor = new Color(0.8f, 0.0f, 1.0f, 0.7f);
             rayStartWidth = 0.003f;
             rayEndWidth = 0.0005f;
             maxVisualDistance = 0.8f;
+            EditorUtility.DisplayDialog("プリセット適用", "MetaQuest3スタイル (紫) が適用されました。", "OK");
         }
-        EditorGUILayout.EndHorizontal();
         
-        EditorGUILayout.Space();
-        
-        // セットアップボタン
-        GUI.enabled = (setupLeft && leftController != null) || (setupRight && rightController != null);
-        if (GUILayout.Button("レーザーポインターをセットアップ"))
+        if (GUILayout.Button("標準スタイル (長め)"))
         {
-            SetupLaserPointers();
+            selectedColor = new Color(0.0f, 0.8f, 1.0f, 0.7f);
+            rayStartWidth = 0.005f;
+            rayEndWidth = 0.002f;
+            maxVisualDistance = 2.0f;
+            EditorUtility.DisplayDialog("プリセット適用", "標準スタイル (長め) が適用されました。", "OK");
         }
-        GUI.enabled = true;
         
-        EditorGUILayout.Space();
-        EditorGUILayout.HelpBox("このツールは選択したコントローラーにレーザーポインターを追加し、設定を適用します。", MessageType.Info);
+        if (GUILayout.Button("細い精密スタイル"))
+        {
+            selectedColor = new Color(1.0f, 0.2f, 0.2f, 0.7f);
+            rayStartWidth = 0.001f;
+            rayEndWidth = 0.0001f;
+            maxVisualDistance = 1.5f;
+            EditorUtility.DisplayDialog("プリセット適用", "細い精密スタイルが適用されました。", "OK");
+        }
+    }
+
+    private void UpdateAllLaserPointers()
+    {
+        // シーン内の全VRLaserPointerを検索して更新
+        VRLaserPointer[] pointers = FindObjectsOfType<VRLaserPointer>();
+        int updateCount = 0;
+        
+        foreach (VRLaserPointer pointer in pointers)
+        {
+            if (pointer != null)
+            {
+                UpdateLaserPointerSettings(pointer);
+                updateCount++;
+            }
+        }
+        
+        if (updateCount > 0)
+        {
+            EditorUtility.DisplayDialog("更新完了", $"{updateCount}個のレーザーポインターを更新しました。", "OK");
+        }
+        else
+        {
+            EditorUtility.DisplayDialog("更新情報", "シーン内に更新可能なレーザーポインターが見つかりませんでした。", "OK");
+        }
     }
 
     private void SetupLaserPointers()
@@ -176,6 +267,10 @@ public class VRLaserSetupTool : EditorWindow
             // 既存のポインターがある場合は更新
             laserObj = existingPointer.gameObject;
             Debug.Log($"既存のレーザーポインターを更新します: {controller.name}");
+            
+            // 設定を更新
+            UpdateLaserPointerSettings(existingPointer);
+            return true;
         }
         else if (laserPrefab != null)
         {
@@ -194,7 +289,21 @@ public class VRLaserSetupTool : EditorWindow
             laserObj.transform.localPosition = Vector3.zero;
             laserObj.transform.localRotation = Quaternion.identity;
             
+            // VRLaserPointerコンポーネントを取得
+            VRLaserPointer laserPointer = laserObj.GetComponent<VRLaserPointer>();
+            if (laserPointer != null)
+            {
+                // rayOriginを設定
+                SerializedObject serializedPointer = new SerializedObject(laserPointer);
+                serializedPointer.FindProperty("rayOrigin").objectReferenceValue = controller.transform;
+                serializedPointer.ApplyModifiedProperties();
+                
+                // レーザー設定を更新
+                UpdateLaserPointerSettings(laserPointer);
+            }
+            
             Debug.Log($"新しいレーザーポインターを作成しました: {laserObj.name}");
+            return true;
         }
         else
         {
@@ -202,66 +311,97 @@ public class VRLaserSetupTool : EditorWindow
             laserObj = new GameObject(isLeft ? "LeftLaserPointer" : "RightLaserPointer");
             laserObj.transform.SetParent(controller.transform, false);
             
+            // VRLaserPointerコンポーネントを追加
+            VRLaserPointer laserPointer = laserObj.AddComponent<VRLaserPointer>();
+            
+            // rayOriginを設定
+            SerializedObject serializedPointer = new SerializedObject(laserPointer);
+            serializedPointer.FindProperty("rayOrigin").objectReferenceValue = controller.transform;
+            serializedPointer.ApplyModifiedProperties();
+            
+            // レーザー設定を更新
+            UpdateLaserPointerSettings(laserPointer);
+            
             Debug.Log($"新しいレーザーポインターゲームオブジェクトを作成しました: {laserObj.name}");
+            return true;
         }
+    }
+    
+    private void UpdateLaserPointerSettings(VRLaserPointer laserPointer)
+    {
+        if (laserPointer == null) return;
         
-        // VRLaserPointerコンポーネントを取得または追加
-        VRLaserPointer laserPointer = laserObj.GetComponent<VRLaserPointer>();
-        if (laserPointer == null)
-        {
-            laserPointer = laserObj.AddComponent<VRLaserPointer>();
-        }
-        
-        // 設定を適用
+        // VRLaserPointerの設定を更新
         SerializedObject serializedPointer = new SerializedObject(laserPointer);
         
-        // rayOriginを設定
-        serializedPointer.FindProperty("rayOrigin").objectReferenceValue = controller.transform;
-        
-        // 外観設定
+        // 設定を適用
         serializedPointer.FindProperty("rayStartWidth").floatValue = rayStartWidth;
         serializedPointer.FindProperty("rayEndWidth").floatValue = rayEndWidth;
         serializedPointer.FindProperty("maxVisualDistance").floatValue = maxVisualDistance;
-        
         serializedPointer.FindProperty("rayColor").colorValue = selectedColor;
-        Color endColor = new Color(selectedColor.r, selectedColor.g, selectedColor.b, 0.0f);
-        serializedPointer.FindProperty("rayEndColor").colorValue = endColor;
+        serializedPointer.FindProperty("rayEndColor").colorValue = new Color(selectedColor.r, selectedColor.g, selectedColor.b, 0f);
         
         serializedPointer.ApplyModifiedProperties();
         
-        // LineRendererを追加・設定（初期化中に自動的に行われるが、念のため）
-        LineRenderer lineRenderer = laserObj.GetComponent<LineRenderer>();
+        // LineRendererの設定を更新
+        LineRenderer lineRenderer = laserPointer.gameObject.GetComponent<LineRenderer>();
         if (lineRenderer == null)
         {
-            lineRenderer = laserObj.AddComponent<LineRenderer>();
+            lineRenderer = laserPointer.gameObject.AddComponent<LineRenderer>();
         }
         
-        // 基本設定
+        // LineRenderer基本設定
         lineRenderer.useWorldSpace = true;
         lineRenderer.startWidth = rayStartWidth;
         lineRenderer.endWidth = rayEndWidth;
         lineRenderer.startColor = selectedColor;
-        lineRenderer.endColor = endColor;
+        lineRenderer.endColor = new Color(selectedColor.r, selectedColor.g, selectedColor.b, 0f);
+        lineRenderer.positionCount = 2;
+        
+        // シャドウ関連の設定を最適化
+        lineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        lineRenderer.receiveShadows = false;
+        lineRenderer.allowOcclusionWhenDynamic = false;
         
         // マテリアル設定
-        Material laserMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
-        if (laserMaterial == null)
+        Material material = lineRenderer.material;
+        if (material == null)
         {
-            laserMaterial = new Material(Shader.Find("Standard"));
+            material = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Standard"));
+            }
+            
+            if (material != null)
+            {
+                material.color = selectedColor;
+                material.SetColor("_BaseColor", selectedColor);
+                material.SetColor("_EmissionColor", selectedColor * 1.5f);
+                material.EnableKeyword("_EMISSION");
+                lineRenderer.material = material;
+            }
+        }
+        else
+        {
+            material.color = selectedColor;
+            material.SetColor("_BaseColor", selectedColor);
+            material.SetColor("_EmissionColor", selectedColor * 1.5f);
+            material.EnableKeyword("_EMISSION");
         }
         
-        if (laserMaterial != null)
+        // 初期位置設定
+        Transform rayOrigin = laserPointer.GetRayOrigin();
+        if (rayOrigin != null)
         {
-            laserMaterial.color = selectedColor;
-            laserMaterial.SetColor("_BaseColor", selectedColor);
-            laserMaterial.SetColor("_EmissionColor", selectedColor * 1.5f);
-            laserMaterial.EnableKeyword("_EMISSION");
-            lineRenderer.material = laserMaterial;
+            Vector3 startPos = rayOrigin.position;
+            Vector3 endPos = startPos + rayOrigin.forward * maxVisualDistance;
+            
+            lineRenderer.SetPosition(0, startPos);
+            lineRenderer.SetPosition(1, endPos);
         }
         
-        // 変更を保存
-        EditorUtility.SetDirty(laserObj);
-        
-        return true;
+        EditorUtility.SetDirty(laserPointer);
+        EditorUtility.SetDirty(lineRenderer);
     }
 }
