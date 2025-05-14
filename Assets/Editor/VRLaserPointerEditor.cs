@@ -93,6 +93,7 @@ public class VRLaserPointerEditor : Editor
             originProp.objectReferenceValue = leftControllerAnchor.transform;
             serializedObject.ApplyModifiedProperties();
             EditorUtility.SetDirty(target);
+            Debug.Log($"レーザーの発射元を左コントローラーに設定しました: {leftControllerAnchor.name}");
         }
 
         if (GUILayout.Button("右コントローラーに設定") && rightControllerAnchor != null)
@@ -101,12 +102,61 @@ public class VRLaserPointerEditor : Editor
             originProp.objectReferenceValue = rightControllerAnchor.transform;
             serializedObject.ApplyModifiedProperties();
             EditorUtility.SetDirty(target);
+            Debug.Log($"レーザーの発射元を右コントローラーに設定しました: {rightControllerAnchor.name}");
         }
         EditorGUILayout.EndHorizontal();
 
         // マテリアル設定のボタン
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("視覚効果設定", EditorStyles.boldLabel);
+
+        if (GUILayout.Button("レーザーポインター初期化"))
+        {
+            // LineRendererが存在するか確認
+            LineRenderer lineRenderer = laserPointer.gameObject.GetComponent<LineRenderer>();
+            if (lineRenderer == null)
+            {
+                lineRenderer = laserPointer.gameObject.AddComponent<LineRenderer>();
+                Debug.Log("LineRendererを追加しました");
+            }
+
+            // 基本設定を適用
+            lineRenderer.useWorldSpace = true;
+            lineRenderer.startWidth = laserPointer.GetRayStartWidth();
+            lineRenderer.endWidth = laserPointer.GetRayEndWidth();
+            lineRenderer.startColor = laserPointer.GetRayColor();
+            lineRenderer.endColor = laserPointer.GetRayEndColor();
+            lineRenderer.positionCount = 2;
+
+            // マテリアルを設定
+            Material laserMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+            if (laserMaterial == null)
+            {
+                laserMaterial = new Material(Shader.Find("Standard"));
+            }
+
+            if (laserMaterial != null)
+            {
+                laserMaterial.color = laserPointer.GetRayColor();
+                laserMaterial.SetColor("_BaseColor", laserPointer.GetRayColor()); // URP用
+                laserMaterial.SetColor("_EmissionColor", laserPointer.GetRayColor() * 1.5f); // 発光効果
+                laserMaterial.EnableKeyword("_EMISSION"); // 発光を有効化
+                lineRenderer.material = laserMaterial;
+                Debug.Log("レーザーマテリアルを作成しました");
+            }
+
+            // 初期位置を設定
+            Transform rayOrigin = laserPointer.GetRayOrigin();
+            Vector3 startPos = rayOrigin != null ? rayOrigin.position : laserPointer.transform.position;
+            Vector3 direction = rayOrigin != null ? rayOrigin.forward : laserPointer.transform.forward;
+            Vector3 endPos = startPos + direction * laserPointer.GetMaxVisualDistance();
+
+            lineRenderer.SetPosition(0, startPos);
+            lineRenderer.SetPosition(1, endPos);
+
+            EditorUtility.SetDirty(lineRenderer);
+            Debug.Log("レーザーポインターを初期化しました");
+        }
 
         if (GUILayout.Button("発光効果を強化"))
         {
@@ -138,42 +188,101 @@ public class VRLaserPointerEditor : Editor
         EditorGUILayout.Space();
         EditorGUILayout.LabelField("プリセット", EditorStyles.boldLabel);
 
+        EditorGUILayout.BeginHorizontal();
         if (GUILayout.Button("MetaQuest3スタイル (青)"))
         {
-            SerializedProperty visualDistProp = serializedObject.FindProperty("maxVisualDistance");
-            SerializedProperty startWidthProp = serializedObject.FindProperty("rayStartWidth");
-            SerializedProperty endWidthProp = serializedObject.FindProperty("rayEndWidth");
-            SerializedProperty colorProp = serializedObject.FindProperty("rayColor");
-            SerializedProperty endColorProp = serializedObject.FindProperty("rayEndColor");
-
-            visualDistProp.floatValue = 0.8f;
-            startWidthProp.floatValue = 0.003f;
-            endWidthProp.floatValue = 0.0005f;
-            colorProp.colorValue = new Color(0.0f, 0.8f, 1.0f, 0.7f);
-            endColorProp.colorValue = new Color(0.0f, 0.8f, 1.0f, 0.0f);
-
-            serializedObject.ApplyModifiedProperties();
-            EditorUtility.SetDirty(target);
-            Debug.Log("MetaQuest3スタイル (青) を適用しました");
+            ApplyMetaQuestStyle(laserPointer, true);
         }
 
         if (GUILayout.Button("MetaQuest3スタイル (紫)"))
         {
-            SerializedProperty visualDistProp = serializedObject.FindProperty("maxVisualDistance");
-            SerializedProperty startWidthProp = serializedObject.FindProperty("rayStartWidth");
-            SerializedProperty endWidthProp = serializedObject.FindProperty("rayEndWidth");
-            SerializedProperty colorProp = serializedObject.FindProperty("rayColor");
-            SerializedProperty endColorProp = serializedObject.FindProperty("rayEndColor");
-
-            visualDistProp.floatValue = 0.8f;
-            startWidthProp.floatValue = 0.003f;
-            endWidthProp.floatValue = 0.0005f;
-            colorProp.colorValue = new Color(0.8f, 0.0f, 1.0f, 0.7f);
-            endColorProp.colorValue = new Color(0.8f, 0.0f, 1.0f, 0.0f);
-
-            serializedObject.ApplyModifiedProperties();
-            EditorUtility.SetDirty(target);
-            Debug.Log("MetaQuest3スタイル (紫) を適用しました");
+            ApplyMetaQuestStyle(laserPointer, false);
         }
+        EditorGUILayout.EndHorizontal();
+    }
+
+    private void ApplyMetaQuestStyle(VRLaserPointer laserPointer, bool useBlueColor)
+    {
+        // VRLaserPointerの設定
+        SerializedObject serializedPointer = new SerializedObject(laserPointer);
+        
+        // サイズ設定
+        serializedPointer.FindProperty("maxVisualDistance").floatValue = 0.8f;
+        serializedPointer.FindProperty("rayStartWidth").floatValue = 0.003f;
+        serializedPointer.FindProperty("rayEndWidth").floatValue = 0.0005f;
+        
+        // 色設定
+        Color mainColor = useBlueColor 
+            ? new Color(0.0f, 0.8f, 1.0f, 0.7f)  // 青
+            : new Color(0.8f, 0.0f, 1.0f, 0.7f); // 紫
+            
+        Color endColor = new Color(mainColor.r, mainColor.g, mainColor.b, 0.0f);
+        
+        serializedPointer.FindProperty("rayColor").colorValue = mainColor;
+        serializedPointer.FindProperty("rayEndColor").colorValue = endColor;
+        
+        serializedPointer.ApplyModifiedProperties();
+        
+        // LineRendererの更新
+        LineRenderer lineRenderer = laserPointer.gameObject.GetComponent<LineRenderer>();
+        if (lineRenderer == null)
+        {
+            lineRenderer = laserPointer.gameObject.AddComponent<LineRenderer>();
+            Debug.Log("LineRendererを追加しました");
+        }
+        
+        // LineRendererの設定
+        lineRenderer.useWorldSpace = true;
+        lineRenderer.startWidth = 0.003f;
+        lineRenderer.endWidth = 0.0005f;
+        lineRenderer.startColor = mainColor;
+        lineRenderer.endColor = endColor;
+        lineRenderer.positionCount = 2;
+        
+        // レーザーの位置を設定
+        Transform rayOrigin = laserPointer.GetRayOrigin();
+        Vector3 startPos = rayOrigin != null ? rayOrigin.position : laserPointer.transform.position;
+        Vector3 direction = rayOrigin != null ? rayOrigin.forward : laserPointer.transform.forward;
+        Vector3 endPos = startPos + direction * 0.8f;
+        
+        lineRenderer.SetPosition(0, startPos);
+        lineRenderer.SetPosition(1, endPos);
+        
+        // マテリアルの更新または作成
+        if (lineRenderer.material != null)
+        {
+            // 既存のマテリアルを更新
+            lineRenderer.material.color = mainColor;
+            lineRenderer.material.SetColor("_BaseColor", mainColor);
+            lineRenderer.material.SetColor("_EmissionColor", mainColor * 1.5f);
+            lineRenderer.material.EnableKeyword("_EMISSION");
+        }
+        else
+        {
+            // 新しいマテリアルを作成
+            Material laserMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+            if (laserMaterial == null)
+            {
+                laserMaterial = new Material(Shader.Find("Unlit/Color"));
+                if (laserMaterial == null)
+                {
+                    laserMaterial = new Material(Shader.Find("Standard"));
+                }
+            }
+            
+            if (laserMaterial != null)
+            {
+                laserMaterial.color = mainColor;
+                laserMaterial.SetColor("_BaseColor", mainColor);
+                laserMaterial.SetColor("_EmissionColor", mainColor * 1.5f);
+                laserMaterial.EnableKeyword("_EMISSION");
+                lineRenderer.material = laserMaterial;
+            }
+        }
+        
+        EditorUtility.SetDirty(laserPointer);
+        EditorUtility.SetDirty(lineRenderer);
+        
+        Debug.Log($"MetaQuest3スタイル ({(useBlueColor ? "青" : "紫")}) を適用しました");
     }
 }
