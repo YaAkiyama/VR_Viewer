@@ -9,14 +9,16 @@ using System.Linq;
 public class VRLaserPointer : MonoBehaviour
 {
     [Header("レーザー設定")]
+    [SerializeField] private Transform rayOrigin;  // レーザーの発射元（コントローラー）
     [SerializeField] private float maxRayDistance = 100f;   // レーザーの最大検出距離
-    [SerializeField] private float maxVisualDistance = 1.0f;  // 視覚的なレーザーの長さ（短く変更）
-    [SerializeField] private float rayStartWidth = 0.004f;     // レーザーの開始幅（細く設定）
-    [SerializeField] private float rayEndWidth = 0.001f;       // レーザーの終端幅（先細り効果）
+    [SerializeField] private float maxVisualDistance = 0.8f;  // 視覚的なレーザーの長さ（短く変更）
+    [SerializeField] private float rayStartWidth = 0.003f;     // レーザーの開始幅（細く設定）
+    [SerializeField] private float rayEndWidth = 0.0005f;       // レーザーの終端幅（先細り効果）
     [SerializeField] private Color rayColor = new Color(0.0f, 0.8f, 1.0f, 0.7f); // レーザーの色（鮮やかに）
     [SerializeField] private Color rayEndColor = new Color(0.0f, 0.8f, 1.0f, 0.0f); // レーザー終端の色（透明に）
 
     [Header("ポインタードット設定")]
+    [SerializeField] private GameObject pointerDotPrefab;   // ポインタードットのプレハブ
     [SerializeField] private float dotScale = 0.01f;        // ポインタードットのスケール（より小さく）
     [SerializeField] private Color dotColor = Color.white;  // 通常時のドットの色
     [SerializeField] private Color dotPressedColor = Color.red; // 押下時のドットの色
@@ -113,6 +115,13 @@ public class VRLaserPointer : MonoBehaviour
         try
         {
             Debug.Log("[LaserPointer] Start initializing...");
+
+            // レーザーの発射元を設定 (コントローラーの位置)
+            if (rayOrigin == null)
+            {
+                rayOrigin = transform;
+                Debug.Log("[LaserPointer] rayOrigin not set, using self transform");
+            }
 
             // PanelVisibilityControllerを探す（もしSerializeFieldで設定されていなければ）
             if (panelVisibilityController == null)
@@ -366,6 +375,12 @@ public class VRLaserPointer : MonoBehaviour
                 aButtonAction.action.performed -= OnAButtonPressed;
                 Debug.Log("[LaserPointer] Aボタンイベントを解除");
             }
+
+            // ポインタードットを破棄
+            if (pointerDot != null)
+            {
+                Destroy(pointerDot);
+            }
         }
         catch (System.Exception e)
         {
@@ -402,7 +417,7 @@ public class VRLaserPointer : MonoBehaviour
                 laserMaterial = new Material(Shader.Find("Unlit/Color"));
                 if (laserMaterial == null)
                 {
-                    Debug.LogWarning("[LaserPointer] 代替シェーダーも見つかりません。新しいマテリアルを作成します。");
+                    Debug.LogWarning("[LaserPointer] 代替シェーダーも見つかりません。Standardシェーダーを使用します。");
                     laserMaterial = new Material(Shader.Find("Standard"));
                 }
             }
@@ -410,6 +425,9 @@ public class VRLaserPointer : MonoBehaviour
             if (laserMaterial != null)
             {
                 laserMaterial.color = rayColor;
+                laserMaterial.SetColor("_BaseColor", rayColor); // URP用
+                laserMaterial.SetColor("_EmissionColor", rayColor * 1.5f); // 発光効果
+                laserMaterial.EnableKeyword("_EMISSION"); // 発光を有効化
                 lineRenderer.material = laserMaterial;
                 Debug.Log($"[LaserPointer] レーザーマテリアル作成: Color={rayColor}");
             }
@@ -421,7 +439,7 @@ public class VRLaserPointer : MonoBehaviour
             lineRenderer.positionCount = 2;
 
             // 初期位置を設定
-            Vector3 startPos = transform.position;
+            Vector3 startPos = rayOrigin != null ? rayOrigin.position : transform.position;
             Vector3 endPos = startPos + transform.forward * maxVisualDistance;
 
             lineRenderer.SetPosition(0, startPos);
@@ -439,15 +457,27 @@ public class VRLaserPointer : MonoBehaviour
     {
         try
         {
-            // ポインタードットを作成
-            pointerDot = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            // ポインタードットをプレハブから生成
+            if (pointerDotPrefab != null)
+            {
+                pointerDot = Instantiate(pointerDotPrefab);
+                pointerDot.name = "LaserDot";
+                Debug.Log("[LaserPointer] ポインタードットをプレハブから生成");
+            }
+            else
+            {
+                // プレハブがない場合はプリミティブから生成
+                pointerDot = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                pointerDot.name = "LaserDot";
+                Debug.Log("[LaserPointer] ポインタードットをプリミティブから生成");
+            }
+
             if (pointerDot == null)
             {
                 Debug.LogError("[LaserPointer] Failed to create pointer dot");
                 return;
             }
 
-            pointerDot.name = "LaserDot";
             // ワールド空間に配置し、親子関係を設定しない
             pointerDot.transform.SetParent(null);
             pointerDot.transform.localScale = Vector3.one * dotScale;
@@ -473,6 +503,9 @@ public class VRLaserPointer : MonoBehaviour
                 if (dotMaterial != null)
                 {
                     dotMaterial.color = dotColor;
+                    dotMaterial.SetColor("_BaseColor", dotColor); // URP用
+                    dotMaterial.SetColor("_EmissionColor", dotColor * 1.5f); // 発光効果
+                    dotMaterial.EnableKeyword("_EMISSION"); // 発光を有効化
                     dotRenderer.material = dotMaterial;
                     Debug.Log($"[LaserPointer] ドットマテリアル作成: Color={dotColor}");
                 }
@@ -768,7 +801,7 @@ public class VRLaserPointer : MonoBehaviour
             }
 
             // コントローラーの位置と方向を取得
-            Vector3 startPos = transform.position;
+            Vector3 startPos = rayOrigin != null ? rayOrigin.position : transform.position;
             Vector3 direction = transform.forward;
 
             // デバッグ - 10フレームごとに情報を出力
