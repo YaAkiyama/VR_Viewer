@@ -38,6 +38,7 @@ public class VRLaserPointer : MonoBehaviour
     [SerializeField] private float dragThresholdDistance = 0.5f; // ドラッグ開始するための最小移動距離
     [SerializeField] private float scrollSensitivity = 0.5f;   // スクロール感度
     [SerializeField] private float horizontalScrollMultiplier = 5.0f; // 水平スクロール用の乗数
+    [SerializeField] private bool invertScrollDirection = true; // スクロール方向を反転するかどうか
 
     // レーザー用のコンポーネント
     private LineRenderer lineRenderer;
@@ -780,7 +781,9 @@ public class VRLaserPointer : MonoBehaviour
                 if (hitCanvas != null && hitCanvas.name.Contains("Thumbnail"))
                 {
                     // 水平方向の移動量を強調（左右移動を検出しやすく）
-                    dragDelta.x += worldMovementAlongX.x * 500.0f;
+                    // スクロール方向が反転設定の場合、符号を反転
+                    float multiplier = invertScrollDirection ? -500.0f : 500.0f;
+                    dragDelta.x += worldMovementAlongX.x * multiplier;
                 }
                 
                 // 総移動距離を累積
@@ -843,7 +846,10 @@ public class VRLaserPointer : MonoBehaviour
                         if (isThumbnailScroll)
                         {
                             Vector3 horizontalMovement = Vector3.ProjectOnPlane(worldMovement, Vector3.up);
-                            float xMovement = -horizontalMovement.x * 0.5f; // 左右の動きを反転して利用
+                            
+                            // スクロール方向が反転設定の場合、符号を反転
+                            float directionMultiplier = invertScrollDirection ? 1.0f : -1.0f;
+                            float xMovement = horizontalMovement.x * 0.5f * directionMultiplier;
                             
                             // より大きな移動量を使用（VRコントローラーの移動に合わせるため）
                             Vector2 forcedDelta = new Vector2(xMovement, 0);
@@ -885,6 +891,12 @@ public class VRLaserPointer : MonoBehaviour
         // コントローラーの入力に基づいてスクロール
         float moveAmount = controllerDelta.x * horizontalScrollMultiplier;
         
+        // スクロール方向が反転設定の場合、符号を反転
+        if (invertScrollDirection)
+        {
+            moveAmount = -moveAmount;
+        }
+        
         // 非常に直感的なスクロール制御（左->右の動きでコンテンツを左に移動）
         normalizedPosition.x -= moveAmount;
         
@@ -897,7 +909,7 @@ public class VRLaserPointer : MonoBehaviour
         // デバッグ出力
         if (Mathf.Abs(moveAmount) > 0.001f)
         {
-            Debug.LogError($"[LaserPointer] 特殊スクロール更新: 入力={controllerDelta}, 移動量={moveAmount}, 新位置={normalizedPosition}");
+            Debug.LogError($"[LaserPointer] 特殊スクロール更新: 入力={controllerDelta}, 移動量={moveAmount}, 新位置={normalizedPosition}, 反転={invertScrollDirection}");
         }
     }
 
@@ -942,12 +954,25 @@ public class VRLaserPointer : MonoBehaviour
         {
             case ScrollDirection.Horizontal:
                 // ScrollRectは水平方向は右が0、左が1 という反転した値
-                normalizedPosition.x -= dragDelta.x * scrollSensitivity / activeScrollRect.content.rect.width;
+                float xDelta = dragDelta.x * scrollSensitivity / activeScrollRect.content.rect.width;
+                
+                // スクロール方向が反転設定の場合、符号を反転
+                if (invertScrollDirection)
+                {
+                    xDelta = -xDelta;
+                }
+                
+                normalizedPosition.x -= xDelta;
                 
                 // ThumbnailCanvasの場合は強制的にスクロール感度を上げる
                 if (isThumbnailCanvas)
                 {
-                    normalizedPosition.x -= dragDelta.x * 0.01f; // 追加のスクロール
+                    float additionalXDelta = dragDelta.x * 0.01f;
+                    if (invertScrollDirection)
+                    {
+                        additionalXDelta = -additionalXDelta;
+                    }
+                    normalizedPosition.x -= additionalXDelta; // 追加のスクロール
                 }
                 break;
                 
@@ -958,7 +983,12 @@ public class VRLaserPointer : MonoBehaviour
                 
             case ScrollDirection.Both:
                 // 両方向に移動
-                normalizedPosition.x -= dragDelta.x * scrollSensitivity / activeScrollRect.content.rect.width;
+                float xDeltaBoth = dragDelta.x * scrollSensitivity / activeScrollRect.content.rect.width;
+                if (invertScrollDirection)
+                {
+                    xDeltaBoth = -xDeltaBoth;
+                }
+                normalizedPosition.x -= xDeltaBoth;
                 normalizedPosition.y += dragDelta.y * scrollSensitivity / activeScrollRect.content.rect.height;
                 break;
         }
@@ -973,7 +1003,7 @@ public class VRLaserPointer : MonoBehaviour
         // デバッグ出力
         if (Time.frameCount % 5 == 0 && isThumbnailCanvas)
         {
-            Debug.LogError($"[LaserPointer] スクロール更新: Delta={dragDelta}, 新位置={normalizedPosition}");
+            Debug.LogError($"[LaserPointer] スクロール更新: Delta={dragDelta}, 新位置={normalizedPosition}, 反転={invertScrollDirection}");
         }
     }
 
