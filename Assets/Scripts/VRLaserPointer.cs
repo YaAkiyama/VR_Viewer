@@ -448,7 +448,7 @@ public class VRLaserPointer : MonoBehaviour
 
             // 初期位置を設定
             Vector3 startPos = rayOrigin != null ? rayOrigin.position : transform.position;
-            Vector3 endPos = startPos + transform.forward * maxVisualDistance;
+            Vector3 endPos = startPos + (rayOrigin != null ? rayOrigin.forward : transform.forward) * maxVisualDistance;
 
             lineRenderer.SetPosition(0, startPos);
             lineRenderer.SetPosition(1, endPos);
@@ -810,7 +810,7 @@ public class VRLaserPointer : MonoBehaviour
 
             // コントローラーの位置と方向を取得
             Vector3 startPos = rayOrigin != null ? rayOrigin.position : transform.position;
-            Vector3 direction = transform.forward;
+            Vector3 direction = rayOrigin != null ? rayOrigin.forward : transform.forward;
 
             // デバッグ - 10フレームごとに情報を出力
             if (Time.frameCount % 30 == 0)
