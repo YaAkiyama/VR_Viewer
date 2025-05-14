@@ -103,6 +103,11 @@ public class VRLaserPointer : MonoBehaviour
     private const int MAX_INACTIVE_FRAMES = 10; // 動きがない場合のフレーム数制限
     private bool isScrolling = false; // スクロール中かどうかを識別するフラグ
 
+    // サムネイル選択処理の追加変数
+    private GameObject dragStartThumbnail = null; // ドラッグ開始時のサムネイルオブジェクト
+    private GameObject dragEndThumbnail = null;   // ドラッグ終了時のサムネイルオブジェクト
+    private bool isThumbnailDrag = false;         // サムネイルをドラッグしているかどうか
+
     // スクロール種別
     private enum ScrollDirection { Horizontal, Vertical, Both }
     private ScrollDirection activeScrollDirection = ScrollDirection.Horizontal;
@@ -1104,6 +1109,20 @@ public class VRLaserPointer : MonoBehaviour
                     {
                         ExecuteEvents.Execute(draggedObject, cachedPointerData, ExecuteEvents.beginDragHandler);
                     }
+
+                    // サムネイル関連の処理
+                    if (hitCanvas != null && hitCanvas.name.Contains("Thumbnail"))
+                    {
+                        isThumbnailDrag = true;
+                        
+                        // ドラッグ開始時のサムネイルを記録（現在のターゲット）
+                        dragStartThumbnail = currentTarget;
+                        
+                        if (dragStartThumbnail != null)
+                        {
+                            Debug.LogError($"[LaserPointer] ドラッグ開始サムネイル: {dragStartThumbnail.name}");
+                        }
+                    }
                 }
 
                 // ドラッグ中の処理
@@ -1712,11 +1731,15 @@ public class VRLaserPointer : MonoBehaviour
 
             Debug.Log($"[LaserPointer] ポインターUp: {go.name}");
 
-            // スクロール中のサムネイル選択を防止
-            bool preventClick = preventThumbnailSelectionWhileDragging && (isScrolling || isJoystickScrolling) && 
-                               (go.name.Contains("Thumbnail") || (hitCanvas != null && hitCanvas.name.Contains("Thumbnail")));
+            // スクロール中のサムネイル選択を防止（ただし同一サムネイル上での開始/終了は許可）
+            bool isSameThumbnail = isThumbnailDrag && dragStartThumbnail != null && dragEndThumbnail != null && 
+                                 dragStartThumbnail == dragEndThumbnail;
             
-            if (preventClick)
+            bool preventClick = preventThumbnailSelectionWhileDragging && (isScrolling || isJoystickScrolling) && 
+                               (go.name.Contains("Thumbnail") || (hitCanvas != null && hitCanvas.name.Contains("Thumbnail"))) &&
+                               !isSameThumbnail;  // 同一サムネイル上なら許可
+            
+            if (preventClick && !isSameThumbnail)
             {
                 Debug.LogWarning($"[LaserPointer] スクロール中のためサムネイルUpイベントを無視: {go.name}");
                 return;
@@ -1744,8 +1767,13 @@ public class VRLaserPointer : MonoBehaviour
             ExecuteEvents.Execute(go, cachedPointerData, ExecuteEvents.pointerUpHandler);
 
             // クリックイベントを発信
-            if (cachedPointerData.pointerPress == go && !preventClick)
+            if (cachedPointerData.pointerPress == go && (!preventClick || isSameThumbnail))
             {
+                if (isSameThumbnail)
+                {
+                    Debug.LogError($"[LaserPointer] 同一サムネイル上でのクリック処理発生: {go.name}");
+                }
+                
                 Debug.Log($"[LaserPointer] クリック: {go.name}");
                 ExecuteEvents.Execute(go, cachedPointerData, ExecuteEvents.pointerClickHandler);
             }
@@ -1786,6 +1814,11 @@ public class VRLaserPointer : MonoBehaviour
                 isInitialDragFrame = true;
                 framesSinceLastMovement = 0;
                 isScrolling = false; // ドラッグ開始時点ではスクロールではない
+                
+                // サムネイル関連の変数をリセット
+                isThumbnailDrag = false;
+                dragStartThumbnail = null;
+                dragEndThumbnail = null;
 
                 // ポインタダウンの処理
                 HandlePointerDown(currentTarget);
@@ -1807,10 +1840,17 @@ public class VRLaserPointer : MonoBehaviour
                 dotRenderer.material.color = dotColor;
             }
 
+            // ドラッグ終了時の現在のターゲットを記録
+            if (isThumbnailDrag && currentTarget != null)
+            {
+                dragEndThumbnail = currentTarget;
+                Debug.LogError($"[LaserPointer] ドラッグ終了サムネイル: {dragEndThumbnail.name}");
+            }
+
             // ドラッグ終了処理
             if (isDragging && draggedObject != null)
             {
-                Debug.LogError($"[LaserPointer] ドラッグ終了: オブジェクト={draggedObject.name}");
+                Debug.LogError($"[LaserPointer] ドラッグ終了: オブジェクト={draggedObject.name}, サムネイルドラッグ={isThumbnailDrag}");
 
                 // ドラッグ終了処理
                 cachedPointerData.position = pointerData.position;
@@ -1833,6 +1873,19 @@ public class VRLaserPointer : MonoBehaviour
                     ExecuteEvents.Execute(currentTarget, cachedPointerData, ExecuteEvents.dropHandler);
                 }
 
+                // サムネイルドラッグの場合の特別処理
+                bool shouldTriggerClick = false;
+                GameObject clickTarget = null;
+                
+                if (isThumbnailDrag && dragStartThumbnail != null && dragEndThumbnail != null && 
+                    dragStartThumbnail == dragEndThumbnail && !preventThumbnailSelectionWhileDragging)
+                {
+                    // 同じサムネイル上でドラッグを開始・終了した場合は選択として処理
+                    shouldTriggerClick = true;
+                    clickTarget = dragEndThumbnail;
+                    Debug.LogError($"[LaserPointer] 同一サムネイル上でのドラッグ終了: 選択として処理 - {clickTarget.name}");
+                }
+
                 isDragging = false;
                 draggedObject = null;
                 dragThresholdMet = false;
@@ -1845,6 +1898,17 @@ public class VRLaserPointer : MonoBehaviour
                 {
                     pointerDot.SetActive(true);
                 }
+
+                // 同一サムネイル上でのドラッグだった場合、選択アクションを強制実行
+                if (shouldTriggerClick && clickTarget != null)
+                {
+                    // ポインターアップとクリックイベントを発行
+                    cachedPointerData.pointerPress = clickTarget;
+                    cachedPointerData.position = pointerData.position;
+                    
+                    Debug.LogError($"[LaserPointer] 強制クリックイベント実行: {clickTarget.name}");
+                    ExecuteEvents.Execute(clickTarget, cachedPointerData, ExecuteEvents.pointerClickHandler);
+                }
             }
 
             if (currentTarget != null)
@@ -1852,6 +1916,11 @@ public class VRLaserPointer : MonoBehaviour
                 // ポインタアップの処理
                 HandlePointerUp(currentTarget);
             }
+
+            // サムネイル関連のリセット
+            isThumbnailDrag = false;
+            dragStartThumbnail = null;
+            dragEndThumbnail = null;
         }
         catch (System.Exception e)
         {
