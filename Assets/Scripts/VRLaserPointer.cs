@@ -39,6 +39,7 @@ public class VRLaserPointer : MonoBehaviour
     [SerializeField] private float scrollSensitivity = 0.5f;   // スクロール感度
     [SerializeField] private float horizontalScrollMultiplier = 5.0f; // 水平スクロール用の乗数
     [SerializeField] private bool invertScrollDirection = true; // スクロール方向を反転するかどうか
+    [SerializeField] private bool preventThumbnailSelectionWhileDragging = true; // ドラッグ中のサムネイル選択を防止するかどうか
 
     // レーザー用のコンポーネント
     private LineRenderer lineRenderer;
@@ -80,6 +81,7 @@ public class VRLaserPointer : MonoBehaviour
     private bool isInitialDragFrame = true;
     private int framesSinceLastMovement = 0;
     private const int MAX_INACTIVE_FRAMES = 10; // 動きがない場合のフレーム数制限
+    private bool isScrolling = false; // スクロール中かどうかを識別するフラグ
 
     // スクロール種別
     private enum ScrollDirection { Horizontal, Vertical, Both }
@@ -528,7 +530,8 @@ public class VRLaserPointer : MonoBehaviour
                     Debug.LogError($"[LaserPointer] スクロール状態: ScrollRect={activeScrollRect.name}, " +
                                    $"ScrollPos={activeScrollRect.normalizedPosition}, " +
                                    $"Dragging={isDragging}, Delta={totalDragDelta}, " +
-                                   $"ControllerMovement={controllerMovement}");
+                                   $"ControllerMovement={controllerMovement}, " +
+                                   $"InvertDirection={invertScrollDirection}");
                 }
             }
         }
@@ -673,7 +676,17 @@ public class VRLaserPointer : MonoBehaviour
 
                     // 選択されたヒット情報を取得
                     UIHitInfo selectedHit = uiHits[0];
-                    currentTarget = selectedHit.target;
+                    
+                    // ドラッグ中のサムネイル選択を防止
+                    bool isThumbnail = selectedHit.target != null && 
+                                     (selectedHit.target.name.Contains("Thumbnail") || 
+                                      (selectedHit.canvas != null && selectedHit.canvas.name.Contains("Thumbnail")));
+                    
+                    if (!(preventThumbnailSelectionWhileDragging && isScrolling && isThumbnail))
+                    {
+                        currentTarget = selectedHit.target;
+                    }
+                    
                     hitDistance = selectedHit.distance;
                     hitCanvas = selectedHit.canvas;
 
@@ -684,7 +697,11 @@ public class VRLaserPointer : MonoBehaviour
                     lastPointerPosition = selectedHit.screenPosition;
 
                     // デバッグ出力
-                    Debug.Log($"[LaserPointer] UIヒット: Canvas={selectedHit.canvas.name}, Target={currentTarget?.name}, 距離={selectedHit.distance}");
+                    if (Time.frameCount % 30 == 0)
+                    {
+                        string targetInfo = currentTarget != null ? currentTarget.name : "なし(選択防止中)";
+                        Debug.Log($"[LaserPointer] UIヒット: Canvas={selectedHit.canvas.name}, Target={targetInfo}, 距離={selectedHit.distance}, スクロール中={isScrolling}");
+                    }
 
                     // ヒット位置にポインタードットを表示
                     if (hitPoint != null && pointerDot != null && !isDragging)
@@ -781,8 +798,8 @@ public class VRLaserPointer : MonoBehaviour
                 if (hitCanvas != null && hitCanvas.name.Contains("Thumbnail"))
                 {
                     // 水平方向の移動量を強調（左右移動を検出しやすく）
-                    // スクロール方向が反転設定の場合、符号を反転
-                    float multiplier = invertScrollDirection ? -500.0f : 500.0f;
+                    float multiplier = 500.0f;
+                    // 反転するかどうかは後で処理するので、ここではそのままの方向で計算
                     dragDelta.x += worldMovementAlongX.x * multiplier;
                 }
                 
@@ -802,6 +819,7 @@ public class VRLaserPointer : MonoBehaviour
                 {
                     dragThresholdMet = true;
                     isDragging = true;
+                    isScrolling = true; // スクロール開始
 
                     // まずScrollRectを探す
                     FindAndSetScrollRect();
@@ -814,7 +832,7 @@ public class VRLaserPointer : MonoBehaviour
                         // スクロール方向を決定
                         DetermineScrollDirection();
                         
-                        Debug.LogError($"[LaserPointer] ドラッグ開始: ScrollRect={activeScrollRect.name}, 初期位置={previousScrollPosition}, 方向={activeScrollDirection}");
+                        Debug.LogError($"[LaserPointer] ドラッグ開始: ScrollRect={activeScrollRect.name}, 初期位置={previousScrollPosition}, 方向={activeScrollDirection}, 反転={invertScrollDirection}");
                     }
                     else
                     {
@@ -848,7 +866,7 @@ public class VRLaserPointer : MonoBehaviour
                             Vector3 horizontalMovement = Vector3.ProjectOnPlane(worldMovement, Vector3.up);
                             
                             // スクロール方向が反転設定の場合、符号を反転
-                            float directionMultiplier = invertScrollDirection ? 1.0f : -1.0f;
+                            float directionMultiplier = invertScrollDirection ? -1.0f : 1.0f;
                             float xMovement = horizontalMovement.x * 0.5f * directionMultiplier;
                             
                             // より大きな移動量を使用（VRコントローラーの移動に合わせるため）
@@ -891,14 +909,14 @@ public class VRLaserPointer : MonoBehaviour
         // コントローラーの入力に基づいてスクロール
         float moveAmount = controllerDelta.x * horizontalScrollMultiplier;
         
-        // スクロール方向が反転設定の場合、符号を反転
+        // invertScrollDirectionフラグに基づいてスクロール方向を反転
         if (invertScrollDirection)
         {
             moveAmount = -moveAmount;
         }
         
-        // 非常に直感的なスクロール制御（左->右の動きでコンテンツを左に移動）
-        normalizedPosition.x -= moveAmount;
+        // 直感的なスクロール制御（パネルをつまんで引っ張るイメージ）
+        normalizedPosition.x += moveAmount;
         
         // 値を0-1の範囲に制限
         normalizedPosition.x = Mathf.Clamp01(normalizedPosition.x);
@@ -953,16 +971,16 @@ public class VRLaserPointer : MonoBehaviour
         switch (activeScrollDirection)
         {
             case ScrollDirection.Horizontal:
-                // ScrollRectは水平方向は右が0、左が1 という反転した値
+                // invertScrollDirectionフラグに基づいてスクロール方向を反転
                 float xDelta = dragDelta.x * scrollSensitivity / activeScrollRect.content.rect.width;
                 
-                // スクロール方向が反転設定の場合、符号を反転
                 if (invertScrollDirection)
                 {
                     xDelta = -xDelta;
                 }
                 
-                normalizedPosition.x -= xDelta;
+                // パネルをつまんで引っ張るイメージの操作感
+                normalizedPosition.x += xDelta;
                 
                 // ThumbnailCanvasの場合は強制的にスクロール感度を上げる
                 if (isThumbnailCanvas)
@@ -972,24 +990,34 @@ public class VRLaserPointer : MonoBehaviour
                     {
                         additionalXDelta = -additionalXDelta;
                     }
-                    normalizedPosition.x -= additionalXDelta; // 追加のスクロール
+                    normalizedPosition.x += additionalXDelta; // 追加のスクロール
                 }
                 break;
                 
             case ScrollDirection.Vertical:
                 // ScrollRectは垂直方向は下が0、上が1
-                normalizedPosition.y += dragDelta.y * scrollSensitivity / activeScrollRect.content.rect.height;
+                // パネルをつまんで引っ張るイメージの操作感
+                float yDelta = dragDelta.y * scrollSensitivity / activeScrollRect.content.rect.height;
+                if (invertScrollDirection)
+                {
+                    yDelta = -yDelta;
+                }
+                normalizedPosition.y += yDelta;
                 break;
                 
             case ScrollDirection.Both:
                 // 両方向に移動
                 float xDeltaBoth = dragDelta.x * scrollSensitivity / activeScrollRect.content.rect.width;
+                float yDeltaBoth = dragDelta.y * scrollSensitivity / activeScrollRect.content.rect.height;
+                
                 if (invertScrollDirection)
                 {
                     xDeltaBoth = -xDeltaBoth;
+                    yDeltaBoth = -yDeltaBoth;
                 }
-                normalizedPosition.x -= xDeltaBoth;
-                normalizedPosition.y += dragDelta.y * scrollSensitivity / activeScrollRect.content.rect.height;
+                
+                normalizedPosition.x += xDeltaBoth;
+                normalizedPosition.y += yDeltaBoth;
                 break;
         }
 
@@ -1282,6 +1310,14 @@ public class VRLaserPointer : MonoBehaviour
 
             Debug.Log($"[LaserPointer] ポインターEnter: {go.name}");
 
+            // ポインターが現在スクロール中ならEnterイベントを無視
+            if (isScrolling && preventThumbnailSelectionWhileDragging && 
+                (go.name.Contains("Thumbnail") || (hitCanvas != null && hitCanvas.name.Contains("Thumbnail"))))
+            {
+                Debug.LogWarning($"[LaserPointer] スクロール中のためサムネイルEnterイベントを無視: {go.name}");
+                return;
+            }
+
             // PointerEnterイベントを発信
             cachedPointerData.pointerEnter = go;
             cachedPointerData.position = pointerData.position;
@@ -1370,6 +1406,14 @@ public class VRLaserPointer : MonoBehaviour
             }
 
             Debug.Log($"[LaserPointer] ポインターDown: {go.name}");
+            
+            // スクロール中のサムネイル選択を防止
+            if (preventThumbnailSelectionWhileDragging && isScrolling && 
+                (go.name.Contains("Thumbnail") || (hitCanvas != null && hitCanvas.name.Contains("Thumbnail"))))
+            {
+                Debug.LogWarning($"[LaserPointer] スクロール中のためサムネイルDownイベントを無視: {go.name}");
+                return;
+            }
 
             cachedPointerData.pointerPress = go;
             cachedPointerData.pressPosition = pointerData.position;
@@ -1411,6 +1455,16 @@ public class VRLaserPointer : MonoBehaviour
 
             Debug.Log($"[LaserPointer] ポインターUp: {go.name}");
 
+            // スクロール中のサムネイル選択を防止
+            bool preventClick = preventThumbnailSelectionWhileDragging && isScrolling && 
+                               (go.name.Contains("Thumbnail") || (hitCanvas != null && hitCanvas.name.Contains("Thumbnail")));
+            
+            if (preventClick)
+            {
+                Debug.LogWarning($"[LaserPointer] スクロール中のためサムネイルUpイベントを無視: {go.name}");
+                return;
+            }
+
             // PointerUpイベントを発信
             cachedPointerData.position = pointerData.position;
 
@@ -1433,7 +1487,7 @@ public class VRLaserPointer : MonoBehaviour
             ExecuteEvents.Execute(go, cachedPointerData, ExecuteEvents.pointerUpHandler);
 
             // クリックイベントを発信
-            if (cachedPointerData.pointerPress == go)
+            if (cachedPointerData.pointerPress == go && !preventClick)
             {
                 Debug.Log($"[LaserPointer] クリック: {go.name}");
                 ExecuteEvents.Execute(go, cachedPointerData, ExecuteEvents.pointerClickHandler);
@@ -1474,6 +1528,7 @@ public class VRLaserPointer : MonoBehaviour
                 totalDragDelta = Vector2.zero;
                 isInitialDragFrame = true;
                 framesSinceLastMovement = 0;
+                isScrolling = false; // ドラッグ開始時点ではスクロールではない
 
                 // ポインタダウンの処理
                 HandlePointerDown(currentTarget);
@@ -1526,6 +1581,7 @@ public class VRLaserPointer : MonoBehaviour
                 dragThresholdMet = false;
                 activeScrollRect = null;
                 hitCanvas = null;
+                isScrolling = false; // スクロール終了
 
                 // ドラッグ終了時、現在のターゲットがあればドットを表示
                 if (currentTarget != null && pointerDot != null)
