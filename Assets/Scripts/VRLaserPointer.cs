@@ -10,12 +10,14 @@ public class VRLaserPointer : MonoBehaviour
 {
     [Header("レーザー設定")]
     [SerializeField] private float maxRayDistance = 100f;   // レーザーの最大検出距離
-    [SerializeField] private float maxVisualDistance = 5f;  // 視覚的なレーザーの長さ
-    [SerializeField] private float rayWidth = 0.01f;        // レーザーの幅
-    [SerializeField] private Color rayColor = new Color(0.0f, 0.5f, 1.0f, 0.5f); // レーザーの色
+    [SerializeField] private float maxVisualDistance = 1.0f;  // 視覚的なレーザーの長さ（短く変更）
+    [SerializeField] private float rayStartWidth = 0.004f;     // レーザーの開始幅（細く設定）
+    [SerializeField] private float rayEndWidth = 0.001f;       // レーザーの終端幅（先細り効果）
+    [SerializeField] private Color rayColor = new Color(0.0f, 0.8f, 1.0f, 0.7f); // レーザーの色（鮮やかに）
+    [SerializeField] private Color rayEndColor = new Color(0.0f, 0.8f, 1.0f, 0.0f); // レーザー終端の色（透明に）
 
     [Header("ポインタードット設定")]
-    [SerializeField] private float dotScale = 0.02f;        // ポインタードットのスケール
+    [SerializeField] private float dotScale = 0.01f;        // ポインタードットのスケール（より小さく）
     [SerializeField] private Color dotColor = Color.white;  // 通常時のドットの色
     [SerializeField] private Color dotPressedColor = Color.red; // 押下時のドットの色
 
@@ -383,14 +385,14 @@ public class VRLaserPointer : MonoBehaviour
                 Debug.Log("[LaserPointer] LineRenderer added to game object");
             }
 
-            // LineRendererの設定をクリアに
+            // LineRendererの設定
             lineRenderer.useWorldSpace = true;
-            lineRenderer.startWidth = rayWidth;
-            lineRenderer.endWidth = rayWidth * 0.5f; // 先細りにする
-
-            // 色を明確に設定
+            lineRenderer.startWidth = rayStartWidth;
+            lineRenderer.endWidth = rayEndWidth;
+            
+            // 色をグラデーションに設定
             lineRenderer.startColor = rayColor;
-            lineRenderer.endColor = new Color(rayColor.r, rayColor.g, rayColor.b, 0.0f); // 終点は透明に
+            lineRenderer.endColor = rayEndColor;
 
             // マテリアルを適切に設定
             Material laserMaterial = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
@@ -911,8 +913,33 @@ public class VRLaserPointer : MonoBehaviour
             }
 
             // レーザーの終点位置と長さを設定
-            float visualDistance = Mathf.Min(hitDistance, maxVisualDistance);
-            Vector3 endPos = startPos + direction * visualDistance;
+            float visualDistance;
+            Vector3 endPos;
+
+            // ヒットした場合は、ヒット位置までレーザーを表示（ただし最大視覚距離まで）
+            if ((hitUI || hitPhysics) && hitDistance < maxRayDistance)
+            {
+                // ヒット位置が視覚的最大距離より近い場合は、ヒット位置までのレーザーを表示
+                if (hitDistance <= maxVisualDistance)
+                {
+                    visualDistance = hitDistance;
+                    endPos = startPos + direction * visualDistance;
+                }
+                else
+                {
+                    // ヒットしたが視覚的最大距離より遠い場合は、最大視覚距離までのレーザーを表示
+                    visualDistance = maxVisualDistance;
+                    endPos = startPos + direction * visualDistance;
+                }
+            }
+            else
+            {
+                // ヒットしなかった場合、または最大距離以上の場合は、最大視覚距離までのレーザーを表示
+                visualDistance = maxVisualDistance;
+                endPos = startPos + direction * visualDistance;
+            }
+
+            // レーザーの終点を設定
             lineRenderer.SetPosition(1, endPos);
 
             // ポインタードットの処理
@@ -1311,10 +1338,12 @@ public class VRLaserPointer : MonoBehaviour
     // 特定のCanvasとの交差判定
     private bool CheckUIRaycast(Vector3 startPos, Vector3 direction, Canvas canvas, out UIHitInfo hitInfo)
     {
-        hitInfo = new UIHitInfo();
-        hitInfo.canvas = canvas;
-        hitInfo.distance = float.MaxValue;
-        hitInfo.target = null;
+        hitInfo = new UIHitInfo()
+        {
+            canvas = canvas,
+            distance = float.MaxValue,
+            target = null
+        };
         
         // NULLチェックを厳密に実施
         if (canvas == null)
