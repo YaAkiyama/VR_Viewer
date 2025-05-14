@@ -22,6 +22,8 @@ public class VRLaserPointer : MonoBehaviour
     [Header("入力設定")]
     [SerializeField] private InputActionReference triggerAction; // トリガーボタン
     [SerializeField] private InputActionReference aButtonAction; // Aボタン
+    [SerializeField] private InputActionReference leftJoystickAction; // 左ジョイスティック
+    [SerializeField] private InputActionReference rightJoystickAction; // 右ジョイスティック
 
     [Header("UI設定")]
     [SerializeField] private GraphicRaycaster uiRaycaster; // UIレイキャスター
@@ -40,6 +42,7 @@ public class VRLaserPointer : MonoBehaviour
     [SerializeField] private float horizontalScrollMultiplier = 5.0f; // 水平スクロール用の乗数
     [SerializeField] private bool invertScrollDirection = true; // スクロール方向を反転するかどうか
     [SerializeField] private bool preventThumbnailSelectionWhileDragging = true; // ドラッグ中のサムネイル選択を防止するかどうか
+    [SerializeField] private float joystickScrollSensitivity = 0.03f; // ジョイスティックでのスクロール感度
 
     // レーザー用のコンポーネント
     private LineRenderer lineRenderer;
@@ -57,6 +60,11 @@ public class VRLaserPointer : MonoBehaviour
     private bool triggerPressed = false;
     private bool isDragging = false;
     private List<Canvas> visibleCanvasList = new List<Canvas>();
+
+    // ジョイスティック入力
+    private Vector2 leftJoystickValue;
+    private Vector2 rightJoystickValue;
+    private bool isJoystickScrolling = false;
 
     // Aボタン関連の変数
     private static readonly object _buttonLock = new object(); // ロックオブジェクト
@@ -246,6 +254,27 @@ public class VRLaserPointer : MonoBehaviour
             else
             {
                 Debug.LogError("[LaserPointer] aButtonActionが設定されていません");
+            }
+
+            // ジョイスティックアクションの設定
+            if (leftJoystickAction != null)
+            {
+                leftJoystickAction.action.Enable();
+                Debug.Log("[LaserPointer] 左ジョイスティックアクション有効化: " + leftJoystickAction.action.name);
+            }
+            else
+            {
+                Debug.LogWarning("[LaserPointer] leftJoystickActionが設定されていません");
+            }
+
+            if (rightJoystickAction != null)
+            {
+                rightJoystickAction.action.Enable();
+                Debug.Log("[LaserPointer] 右ジョイスティックアクション有効化: " + rightJoystickAction.action.name);
+            }
+            else
+            {
+                Debug.LogWarning("[LaserPointer] rightJoystickActionが設定されていません");
             }
 
             // CanvasListを初期化
@@ -494,11 +523,17 @@ public class VRLaserPointer : MonoBehaviour
             // トリガー入力を確認
             CheckTriggerInput();
 
+            // ジョイスティック入力を読み取り
+            ReadJoystickInput();
+
             // レーザーを更新
             UpdateLaser();
 
             // ドラッグ処理の更新
             UpdateDrag();
+
+            // ジョイスティックでのスクロール処理
+            UpdateJoystickScroll();
 
             // VRコントローラーの移動量を更新
             if (triggerPressed && isDragging)
@@ -538,6 +573,83 @@ public class VRLaserPointer : MonoBehaviour
         catch (System.Exception e)
         {
             Debug.LogError($"[LaserPointer] Update エラー: {e.Message}");
+        }
+    }
+
+    private void ReadJoystickInput()
+    {
+        try
+        {
+            // 左ジョイスティックの入力を読み取り
+            if (leftJoystickAction != null)
+            {
+                leftJoystickValue = leftJoystickAction.action.ReadValue<Vector2>();
+            }
+
+            // 右ジョイスティックの入力を読み取り
+            if (rightJoystickAction != null)
+            {
+                rightJoystickValue = rightJoystickAction.action.ReadValue<Vector2>();
+            }
+
+            // デバッグ用に入力値を出力（値が変わった時のみ）
+            if ((leftJoystickValue.magnitude > 0.2f || rightJoystickValue.magnitude > 0.2f) && Time.frameCount % 30 == 0)
+            {
+                Debug.LogError($"[LaserPointer] ジョイスティック入力: 左={leftJoystickValue}, 右={rightJoystickValue}");
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LaserPointer] ReadJoystickInput エラー: {e.Message}");
+        }
+    }
+
+    private void UpdateJoystickScroll()
+    {
+        // ThumbnailScrollRectが設定されていない場合は処理しない
+        if (thumbnailScrollRect == null) return;
+
+        try
+        {
+            // 左右どちらかのジョイスティックが水平方向に傾いているか確認
+            float leftXValue = Mathf.Abs(leftJoystickValue.x) > 0.2f ? leftJoystickValue.x : 0f;
+            float rightXValue = Mathf.Abs(rightJoystickValue.x) > 0.2f ? rightJoystickValue.x : 0f;
+            
+            // 両方のジョイスティックの水平入力を合算
+            float combinedXInput = leftXValue + rightXValue;
+            
+            if (Mathf.Abs(combinedXInput) > 0.2f)
+            {
+                isJoystickScrolling = true;
+                
+                // 現在のScrollRectの正規化された位置を取得
+                Vector2 normalizedPosition = thumbnailScrollRect.normalizedPosition;
+                
+                // 移動量を計算（反転フラグを考慮）
+                float moveAmount = combinedXInput * joystickScrollSensitivity;
+                if (invertScrollDirection)
+                {
+                    moveAmount = -moveAmount;
+                }
+                
+                // 位置を更新
+                normalizedPosition.x += moveAmount;
+                normalizedPosition.x = Mathf.Clamp01(normalizedPosition.x);
+                thumbnailScrollRect.normalizedPosition = normalizedPosition;
+                
+                if (Time.frameCount % 30 == 0)
+                {
+                    Debug.LogError($"[LaserPointer] ジョイスティックスクロール: 入力={combinedXInput}, 移動量={moveAmount}, 新位置={normalizedPosition}");
+                }
+            }
+            else
+            {
+                isJoystickScrolling = false;
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[LaserPointer] UpdateJoystickScroll エラー: {e.Message}");
         }
     }
 
@@ -677,12 +789,12 @@ public class VRLaserPointer : MonoBehaviour
                     // 選択されたヒット情報を取得
                     UIHitInfo selectedHit = uiHits[0];
                     
-                    // ドラッグ中のサムネイル選択を防止
+                    // ドラッグ中またはジョイスティックスクロール中のサムネイル選択を防止
                     bool isThumbnail = selectedHit.target != null && 
                                      (selectedHit.target.name.Contains("Thumbnail") || 
                                       (selectedHit.canvas != null && selectedHit.canvas.name.Contains("Thumbnail")));
                     
-                    if (!(preventThumbnailSelectionWhileDragging && isScrolling && isThumbnail))
+                    if (!(preventThumbnailSelectionWhileDragging && (isScrolling || isJoystickScrolling) && isThumbnail))
                     {
                         currentTarget = selectedHit.target;
                     }
@@ -700,7 +812,7 @@ public class VRLaserPointer : MonoBehaviour
                     if (Time.frameCount % 30 == 0)
                     {
                         string targetInfo = currentTarget != null ? currentTarget.name : "なし(選択防止中)";
-                        Debug.Log($"[LaserPointer] UIヒット: Canvas={selectedHit.canvas.name}, Target={targetInfo}, 距離={selectedHit.distance}, スクロール中={isScrolling}");
+                        Debug.Log($"[LaserPointer] UIヒット: Canvas={selectedHit.canvas.name}, Target={targetInfo}, 距離={selectedHit.distance}, スクロール中={isScrolling}, ジョイスティックスクロール中={isJoystickScrolling}");
                     }
 
                     // ヒット位置にポインタードットを表示
@@ -1311,7 +1423,7 @@ public class VRLaserPointer : MonoBehaviour
             Debug.Log($"[LaserPointer] ポインターEnter: {go.name}");
 
             // ポインターが現在スクロール中ならEnterイベントを無視
-            if (isScrolling && preventThumbnailSelectionWhileDragging && 
+            if ((isScrolling || isJoystickScrolling) && preventThumbnailSelectionWhileDragging && 
                 (go.name.Contains("Thumbnail") || (hitCanvas != null && hitCanvas.name.Contains("Thumbnail"))))
             {
                 Debug.LogWarning($"[LaserPointer] スクロール中のためサムネイルEnterイベントを無視: {go.name}");
@@ -1408,7 +1520,7 @@ public class VRLaserPointer : MonoBehaviour
             Debug.Log($"[LaserPointer] ポインターDown: {go.name}");
             
             // スクロール中のサムネイル選択を防止
-            if (preventThumbnailSelectionWhileDragging && isScrolling && 
+            if (preventThumbnailSelectionWhileDragging && (isScrolling || isJoystickScrolling) && 
                 (go.name.Contains("Thumbnail") || (hitCanvas != null && hitCanvas.name.Contains("Thumbnail"))))
             {
                 Debug.LogWarning($"[LaserPointer] スクロール中のためサムネイルDownイベントを無視: {go.name}");
@@ -1456,7 +1568,7 @@ public class VRLaserPointer : MonoBehaviour
             Debug.Log($"[LaserPointer] ポインターUp: {go.name}");
 
             // スクロール中のサムネイル選択を防止
-            bool preventClick = preventThumbnailSelectionWhileDragging && isScrolling && 
+            bool preventClick = preventThumbnailSelectionWhileDragging && (isScrolling || isJoystickScrolling) && 
                                (go.name.Contains("Thumbnail") || (hitCanvas != null && hitCanvas.name.Contains("Thumbnail")));
             
             if (preventClick)
