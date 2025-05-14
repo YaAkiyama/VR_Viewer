@@ -48,6 +48,14 @@ public class VRLaserPointer : MonoBehaviour
     [SerializeField] private bool preventThumbnailSelectionWhileDragging = true; // ドラッグ中のサムネイル選択を防止するかどうか
     [SerializeField] private float joystickScrollSensitivity = 0.03f; // ジョイスティックでのスクロール感度
 
+    // パブリックゲッターメソッド（エディタ拡張用）
+    public Color GetRayColor() => rayColor;
+    public Color GetRayEndColor() => rayEndColor;
+    public float GetRayStartWidth() => rayStartWidth;
+    public float GetRayEndWidth() => rayEndWidth;
+    public float GetMaxVisualDistance() => maxVisualDistance;
+    public Transform GetRayOrigin() => rayOrigin ?? transform;
+
     // レーザー用のコンポーネント
     private LineRenderer lineRenderer;
     private GameObject pointerDot;
