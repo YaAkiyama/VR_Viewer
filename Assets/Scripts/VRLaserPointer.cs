@@ -1072,8 +1072,8 @@ public class VRLaserPointer : MonoBehaviour
                 }
 
                 // ドラッグの閾値を超えたらドラッグと判定
-                if (!dragThresholdMet && 
-                   (totalDragDelta.magnitude > dragThresholdDistance || 
+                if (!dragThresholdMet &&
+                   (totalDragDelta.magnitude > dragThresholdDistance ||
                     worldMovementAlongX.magnitude > 0.01f))
                 {
                     dragThresholdMet = true;
@@ -1731,19 +1731,10 @@ public class VRLaserPointer : MonoBehaviour
 
             Debug.Log($"[LaserPointer] ポインターUp: {go.name}");
 
-            // スクロール中のサムネイル選択を防止（ただし同一サムネイル上での開始/終了は許可）
-            bool isSameThumbnail = isThumbnailDrag && dragStartThumbnail != null && dragEndThumbnail != null && 
-                                 dragStartThumbnail == dragEndThumbnail;
-            
-            bool preventClick = preventThumbnailSelectionWhileDragging && (isScrolling || isJoystickScrolling) && 
-                               (go.name.Contains("Thumbnail") || (hitCanvas != null && hitCanvas.name.Contains("Thumbnail"))) &&
-                               !isSameThumbnail;  // 同一サムネイル上なら許可
-            
-            if (preventClick && !isSameThumbnail)
-            {
-                Debug.LogWarning($"[LaserPointer] スクロール中のためサムネイルUpイベントを無視: {go.name}");
-                return;
-            }
+            // サムネイルの場合はクリックイベント処理をスキップ（TriggerUpで処理するため）
+            bool isThumbnail = go.name.Contains("Thumbnail") ||
+                              (hitCanvas != null && hitCanvas.name.Contains("Thumbnail"));
+            bool preventClick = isThumbnail && isThumbnailDrag;
 
             // PointerUpイベントを発信
             cachedPointerData.position = pointerData.position;
@@ -1766,14 +1757,9 @@ public class VRLaserPointer : MonoBehaviour
             // イベントを発信
             ExecuteEvents.Execute(go, cachedPointerData, ExecuteEvents.pointerUpHandler);
 
-            // クリックイベントを発信
-            if (cachedPointerData.pointerPress == go && (!preventClick || isSameThumbnail))
+            // クリックイベントを発信（サムネイルの場合はTriggerUpで処理するためスキップ）
+            if (cachedPointerData.pointerPress == go && !preventClick)
             {
-                if (isSameThumbnail)
-                {
-                    Debug.LogError($"[LaserPointer] 同一サムネイル上でのクリック処理発生: {go.name}");
-                }
-                
                 Debug.Log($"[LaserPointer] クリック: {go.name}");
                 ExecuteEvents.Execute(go, cachedPointerData, ExecuteEvents.pointerClickHandler);
             }
@@ -1803,7 +1789,7 @@ public class VRLaserPointer : MonoBehaviour
             {
                 // コントローラーの初期位置を記録
                 initialControllerPosition = transform.position;
-                
+
                 // ドラッグ処理の開始準備
                 dragStartPosition = pointerData.position;
                 dragStartWorldPosition = lastPointerWorldPosition;
@@ -1814,14 +1800,30 @@ public class VRLaserPointer : MonoBehaviour
                 isInitialDragFrame = true;
                 framesSinceLastMovement = 0;
                 isScrolling = false; // ドラッグ開始時点ではスクロールではない
-                
+
                 // サムネイル関連の変数をリセット
                 isThumbnailDrag = false;
-                dragStartThumbnail = null;
-                dragEndThumbnail = null;
+
+                // サムネイルかどうかを判断して記録
+                bool isThumbnail = currentTarget.name.Contains("Thumbnail") ||
+                                  (hitCanvas != null && hitCanvas.name.Contains("Thumbnail"));
+
+                if (isThumbnail)
+                {
+                    // サムネイル選択開始を記録
+                    dragStartThumbnail = currentTarget;
+                    Debug.Log($"[LaserPointer] サムネイル選択開始: {dragStartThumbnail.name}");
+                    isThumbnailDrag = true;
+                }
+                else
+                {
+                    dragStartThumbnail = null;
+                }
 
                 // ポインタダウンの処理
                 HandlePointerDown(currentTarget);
+
+                // 注意: ここではOnThumbnailClickedを呼び出さない
             }
         }
         catch (System.Exception e)
@@ -1845,6 +1847,18 @@ public class VRLaserPointer : MonoBehaviour
             {
                 dragEndThumbnail = currentTarget;
                 Debug.LogError($"[LaserPointer] ドラッグ終了サムネイル: {dragEndThumbnail.name}");
+            }
+
+            // サムネイル選択処理 - 開始と終了のサムネイルが同じ場合のみ
+            bool shouldTriggerThumbnailClick = false;
+
+            if (isThumbnailDrag && dragStartThumbnail != null && dragEndThumbnail != null &&
+                dragStartThumbnail == dragEndThumbnail &&
+                !isDragging) // ドラッグしていない場合に限る
+            {
+                // 同じサムネイル上でドラッグを開始・終了した場合は選択として処理
+                shouldTriggerThumbnailClick = true;
+                Debug.LogError($"[LaserPointer] 同一サムネイル上でトリガー操作: 選択処理実行 - {dragStartThumbnail.name}");
             }
 
             // ドラッグ終了処理
@@ -1873,19 +1887,6 @@ public class VRLaserPointer : MonoBehaviour
                     ExecuteEvents.Execute(currentTarget, cachedPointerData, ExecuteEvents.dropHandler);
                 }
 
-                // サムネイルドラッグの場合の特別処理
-                bool shouldTriggerClick = false;
-                GameObject clickTarget = null;
-                
-                if (isThumbnailDrag && dragStartThumbnail != null && dragEndThumbnail != null && 
-                    dragStartThumbnail == dragEndThumbnail && !preventThumbnailSelectionWhileDragging)
-                {
-                    // 同じサムネイル上でドラッグを開始・終了した場合は選択として処理
-                    shouldTriggerClick = true;
-                    clickTarget = dragEndThumbnail;
-                    Debug.LogError($"[LaserPointer] 同一サムネイル上でのドラッグ終了: 選択として処理 - {clickTarget.name}");
-                }
-
                 isDragging = false;
                 draggedObject = null;
                 dragThresholdMet = false;
@@ -1898,23 +1899,43 @@ public class VRLaserPointer : MonoBehaviour
                 {
                     pointerDot.SetActive(true);
                 }
-
-                // 同一サムネイル上でのドラッグだった場合、選択アクションを強制実行
-                if (shouldTriggerClick && clickTarget != null)
-                {
-                    // ポインターアップとクリックイベントを発行
-                    cachedPointerData.pointerPress = clickTarget;
-                    cachedPointerData.position = pointerData.position;
-                    
-                    Debug.LogError($"[LaserPointer] 強制クリックイベント実行: {clickTarget.name}");
-                    ExecuteEvents.Execute(clickTarget, cachedPointerData, ExecuteEvents.pointerClickHandler);
-                }
             }
 
             if (currentTarget != null)
             {
                 // ポインタアップの処理
                 HandlePointerUp(currentTarget);
+            }
+
+            // すべての処理が終わった後で、一致したサムネイルのクリックイベントを発行
+            if (shouldTriggerThumbnailClick && dragStartThumbnail != null)
+            {
+                // ボタンコンポーネントから情報を取得する試み
+                Button thumbnailButton = dragStartThumbnail.GetComponent<Button>();
+                if (thumbnailButton != null)
+                {
+                    // ボタンからマーカー情報を取得（実装に応じて修正が必要かもしれません）
+                    var markerManager = FindAnyObjectByType<MapMarkerManager>();
+                    if (markerManager != null)
+                    {
+                        // 実際のpointNumber（マーカーID）を取得する必要があります
+                        // 仮実装：サムネイルの名前からIDを抽出する例
+                        string thumbnailName = dragStartThumbnail.name;
+                        int markerId = -1;
+
+                        // サムネイル内のText/TextMeshProコンポーネントを探す
+                        TMPro.TextMeshProUGUI indexText = dragStartThumbnail.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+                        if (indexText != null && int.TryParse(indexText.text, out markerId))
+                        {
+                            Debug.LogError($"[LaserPointer] サムネイルからマーカーID取得: {markerId}");
+                            markerManager.OnMarkerClicked(markerId);
+                        }
+                        else
+                        {
+                            Debug.LogError("[LaserPointer] サムネイルからマーカーIDを取得できませんでした");
+                        }
+                    }
+                }
             }
 
             // サムネイル関連のリセット

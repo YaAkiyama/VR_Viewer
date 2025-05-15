@@ -102,6 +102,8 @@ public class ThumbnailGallery : MonoBehaviour
 
     void Update()
     {
+        // スクロールアニメーションの処理を無効化
+        /*
         // スクロールアニメーションの処理
         if (isScrolling)
         {
@@ -121,6 +123,9 @@ public class ThumbnailGallery : MonoBehaviour
                 isScrolling = false;
             }
         }
+        */
+
+        // 他のUpdate内の処理があればそのまま残す
     }
 
     // X位置オフセットを自動計算（改良版）
@@ -363,19 +368,23 @@ public class ThumbnailGallery : MonoBehaviour
     // サムネイルクリック時の処理
     private void OnThumbnailClicked(int markerIndex)
     {
-        // サムネイルクリックフラグをセット
+        // サムネイルクリックフラグをセット（これは残す）
         thumbnailWasClicked = true;
 
-        // マーカーマネージャーに通知
+        // マーカーマネージャーに通知（これも残す）
         markerManager.OnMarkerClicked(markerIndex);
+
+        // スクロール関連の処理は追加しない
     }
 
     // マーカー選択時の処理（イベント受信）
     private void OnMarkerSelected(int markerIndex)
     {
-        // 選択中のサムネイルを更新
+        // 選択中のサムネイルを更新（この機能は残す）
         UpdateSelectedThumbnail(markerIndex);
 
+        // 以下のスクロール関連のコードは一時的にコメントアウトまたは削除
+        /*
         // サムネイルクリックの場合はスクロールしない設定の場合
         bool shouldScroll = true;
 
@@ -393,6 +402,10 @@ public class ThumbnailGallery : MonoBehaviour
             // 選択されたサムネイルが見えるようにスクロール
             ScrollToThumbnail(markerIndex);
         }
+        */
+
+        // フラグのリセットだけは維持
+        thumbnailWasClicked = false;
     }
 
     // 選択中のサムネイルを更新
@@ -429,8 +442,13 @@ public class ThumbnailGallery : MonoBehaviour
     // 選択されたサムネイルが見えるようにスクロール
     private void ScrollToThumbnail(int markerIndex)
     {
+        // 一時的に処理をすべて無効化
+        return; // 早期リターンでメソッドの残りの部分を実行しない
+
+        /*
         if (scrollRect == null) return;
 
+        // 以下の元のコード全体をコメントアウト
         // マーカーデータをPoint Number順に取得
         List<MapMarker> markers = markerManager.GetMarkerData()
             .OrderBy(m => m.pointNumber)
@@ -441,70 +459,18 @@ public class ThumbnailGallery : MonoBehaviour
 
         if (thumbnailIndex >= 0 && thumbnailIndex < thumbnailObjects.Count)
         {
-            GameObject thumbnailObj = thumbnailObjects[thumbnailIndex];
-            RectTransform thumbnailRect = thumbnailObj.GetComponent<RectTransform>();
-
-            // サムネイルの位置（コンテンツの左端からの距離）
-            float thumbnailPosX = thumbnailRect.anchoredPosition.x;
-
-            // コンテンツ全体の幅
-            float contentWidth = galleryContent.rect.width;
-
-            // ビューポートの幅
-            float viewportWidth = scrollRect.viewport.rect.width;
-
-            // 中央に表示するかどうかで計算を変更
-            float targetPosX;
-
-            if (centerCurrentThumbnail)
-            {
-                // サムネイルを中央に表示する場合
-                // ビューポートの中央位置に合わせる
-                targetPosX = thumbnailPosX - (viewportWidth / 2) + (thumbnailWidth / 2);
-            }
-            else
-            {
-                // 従来の計算方法（サムネイルが見えるように表示）
-                targetPosX = thumbnailPosX - xPositionOffset;
-            }
-
-            // X位置の調整を考慮して正規化されたスクロール位置を計算
-            float normalizedPos;
-
-            if (contentWidth <= viewportWidth)
-            {
-                // コンテンツがビューポートより小さい場合は先頭に
-                normalizedPos = 0;
-            }
-            else
-            {
-                // スクロール可能な範囲を計算
-                float scrollableArea = contentWidth - viewportWidth;
-
-                // 位置を正規化（0-1の範囲に）
-                normalizedPos = Mathf.Clamp(targetPosX / scrollableArea, 0f, 1f);
-
-                // スクロールの向きに応じて調整
-                if (!(scrollRect.horizontalNormalizedPosition == 0 && galleryContent.anchoredPosition.x == 0))
-                {
-                    // 左端が1、右端が0の場合は反転
-                    normalizedPos = 1 - normalizedPos;
-                }
-            }
-
-            // 値を範囲内に収める
-            normalizedPos = Mathf.Clamp(normalizedPos,
-                                      Mathf.Min(minScrollPosition, maxScrollPosition),
-                                      Mathf.Max(minScrollPosition, maxScrollPosition));
-
-            // アニメーション付きでスクロール
-            AnimateScrollTo(normalizedPos);
+            // 元のスクロール処理をすべてコメントアウト
         }
+        */
     }
 
     // スクロールアニメーションを開始
     private void AnimateScrollTo(float targetNormalizedPos)
     {
+        // 一時的に処理をすべて無効化
+        return; // 早期リターンでメソッドの残りの部分を実行しない
+
+        /*
         // アニメーション状態を初期化
         isScrolling = true;
         scrollStartTime = Time.time;
@@ -517,6 +483,7 @@ public class ThumbnailGallery : MonoBehaviour
             scrollRect.horizontalNormalizedPosition = targetNormalizedPos;
             isScrolling = false;
         }
+        */
     }
 
     // サムネイルをクリア
