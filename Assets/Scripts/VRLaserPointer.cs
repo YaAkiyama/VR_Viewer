@@ -1906,6 +1906,8 @@ public class VRLaserPointer : MonoBehaviour
         Debug.Log("[LaserPointer] Aボタン処理フラグをリセットしました");
     }
 
+    // VRLaserPointer.csのUpdateScrollメソッドを修正
+
     private void UpdateScroll()
     {
         try
@@ -1954,20 +1956,17 @@ public class VRLaserPointer : MonoBehaviour
                 // スクロールモードになったらスクロール処理
                 if (isScrollingMode && thumbnailScrollRect != null)
                 {
-                    // 前のフレームからの相対的な移動量を計算
-                    Vector3 frameDelta = currentPosition - transform.position;
+                    // コントローラーの現在位置と前フレームからの差分を計算
+                    Vector3 controllerDelta = currentPosition - scrollStartPosition;
 
-                    // X軸方向の変化のみを考慮（より安定したスクロール）
-                    float xDelta = frameDelta.x;
+                    // X軸方向の変化のみを考慮（水平スクロール）
+                    float xDelta = controllerDelta.x;
 
                     // スクロール方向のマッピングと感度調整
                     float scrollDelta = xDelta * horizontalScrollSpeed;
 
-                    // スクロール方向の反転設定を適用
-                    if (invertScrollDirection)
-                    {
-                        scrollDelta = -scrollDelta;
-                    }
+                    // スクロール方向の反転設定を適用（直感的な動作のため反転させる）
+                    scrollDelta = -scrollDelta;
 
                     // 現在のスクロール位置を取得
                     Vector2 scrollPosition = thumbnailScrollRect.normalizedPosition;
@@ -2009,6 +2008,8 @@ public class VRLaserPointer : MonoBehaviour
     }
 
     // ScrollRectを検索
+    // FindScrollRectメソッドの修正
+
     private void FindScrollRect()
     {
         try
@@ -2029,23 +2030,24 @@ public class VRLaserPointer : MonoBehaviour
                 {
                     thumbnailScrollRect = sr;
                     Debug.LogError($"[LaserPointer] ThumbnailCanvas内のScrollRectを検出: {sr.name}");
+                    return;
                 }
             }
 
             // 3. シーン内で「Thumbnail」を含む名前のScrollRectを検索
-            if (thumbnailScrollRect == null)
+            ScrollRect[] allScrollRects = FindObjectsByType<ScrollRect>(FindObjectsSortMode.None);
+            foreach (ScrollRect scrollRect in allScrollRects)
             {
-                ScrollRect[] allScrollRects = FindObjectsByType<ScrollRect>(FindObjectsSortMode.None);
-                foreach (ScrollRect scrollRect in allScrollRects)
+                if (scrollRect.name.Contains("Thumbnail") ||
+                    (scrollRect.transform.parent != null && scrollRect.transform.parent.name.Contains("Thumbnail")))
                 {
-                    if (scrollRect.name.Contains("Thumbnail") || scrollRect.transform.parent.name.Contains("Thumbnail"))
-                    {
-                        thumbnailScrollRect = scrollRect;
-                        Debug.LogError($"[LaserPointer] シーン内のThumbnailScrollRectを検出: {scrollRect.name}");
-                        break;
-                    }
+                    thumbnailScrollRect = scrollRect;
+                    Debug.LogError($"[LaserPointer] シーン内のThumbnailScrollRectを検出: {scrollRect.name}");
+                    return;
                 }
             }
+
+            Debug.LogError("[LaserPointer] ScrollRectが見つかりませんでした");
         }
         catch (System.Exception e)
         {
