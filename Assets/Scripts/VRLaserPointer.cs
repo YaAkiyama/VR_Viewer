@@ -5,9 +5,24 @@ using UnityEngine.EventSystems;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine.XR; // XR InputDeviceのため
 
 public class VRLaserPointer : MonoBehaviour
 {
+    [Header("ジョイスティックスクロール設定")]
+    // joystickScrollSensitivity は既存の変数を使用するので再定義しない
+    [SerializeField] private float joystickScrollAcceleration = 0.005f; // スクロール加速度（0で加速なし）
+    [SerializeField] private float maxScrollSpeed = 0.1f; // 最大スクロール速度
+    [SerializeField] private bool reverseScrollDirection = true; // スクロール方向を反転するか
+
+    // ジョイスティックスクロール加速用の内部変数
+    private float joystickHoldTime = 0f;
+    private bool wasScrollingLastFrame = false;
+
+    // ジョイスティックスクロール加速用の内部変数
+    private float joystickHoldTime = 0f;
+    private bool wasScrollingLastFrame = false;
+
     // スクロール管理用の変数
     private bool isScrollingMode = false;
     private Vector3 scrollStartPosition;
@@ -377,6 +392,14 @@ public class VRLaserPointer : MonoBehaviour
 
             UpdateVisibleCanvasList();
 
+            // ジョイスティックスクロールの設定を初期化
+            joystickScrollSensitivity = 0.02f; // 既存の変数
+            joystickScrollAcceleration = 0.005f;
+            maxScrollSpeed = 0.1f;
+            reverseScrollDirection = true;
+            Debug.LogError($"[LaserPointer] ジョイスティックスクロール設定: 感度={joystickScrollSensitivity}, " +
+                           $"加速度={joystickScrollAcceleration}, 最大速度={maxScrollSpeed}, 方向反転={reverseScrollDirection}");
+
             Debug.Log("[LaserPointer] 初期化完了");
         }
         catch (System.Exception e)
@@ -647,49 +670,65 @@ public class VRLaserPointer : MonoBehaviour
     {
         try
         {
-            // 左ジョイスティックの入力を読み取り
-            if (leftJoystickAction != null && leftJoystickAction.action != null)
+            // デフォルトで値をゼロに初期化
+            leftJoystickValue = Vector2.zero;
+            rightJoystickValue = Vector2.zero;
+
+            // 直接InputDeviceを使用してジョイスティック値を読み取る
+            var leftHandDevices = new List<UnityEngine.XR.InputDevice>();
+            var rightHandDevices = new List<UnityEngine.XR.InputDevice>();
+
+            // 左右のコントローラーデバイスを取得
+            UnityEngine.XR.InputDevices.GetDevicesWithCharacteristics(
+                UnityEngine.XR.InputDeviceCharacteristics.Controller | UnityEngine.XR.InputDeviceCharacteristics.Left,
+                leftHandDevices);
+
+            UnityEngine.XR.InputDevices.GetDevicesWithCharacteristics(
+                UnityEngine.XR.InputDeviceCharacteristics.Controller | UnityEngine.XR.InputDeviceCharacteristics.Right,
+                rightHandDevices);
+
+            // 左コントローラーのジョイスティック値を取得
+            if (leftHandDevices.Count > 0 && leftHandDevices[0].isValid)
             {
-                leftJoystickValue = leftJoystickAction.action.ReadValue<Vector2>();
-            }
-            else
-            {
-                // 入力アクションAssetを直接探す
-                var asset = Resources.FindObjectsOfTypeAll<InputActionAsset>().FirstOrDefault(a => a.name == "InputSystem_Actions");
-                if (asset != null)
+                if (leftHandDevices[0].TryGetFeatureValue(UnityEngine.XR.CommonUsages.primary2DAxis, out Vector2 leftValue))
                 {
-                    var leftHandMap = asset.FindActionMap("XRI LeftHand");
-                    if (leftHandMap != null)
-                    {
-                        var thumbstickAction = leftHandMap.FindAction("ThumbstickMove");
-                        if (thumbstickAction != null && thumbstickAction.enabled)
-                        {
-                            leftJoystickValue = thumbstickAction.ReadValue<Vector2>();
-                        }
-                    }
+                    leftJoystickValue = leftValue;
                 }
             }
 
-            // 右ジョイスティックの入力を読み取り
-            if (rightJoystickAction != null && rightJoystickAction.action != null)
+            // 右コントローラーのジョイスティック値を取得
+            if (rightHandDevices.Count > 0 && rightHandDevices[0].isValid)
             {
-                rightJoystickValue = rightJoystickAction.action.ReadValue<Vector2>();
-            }
-            else
-            {
-                // 入力アクションAssetを直接探す
-                var asset = Resources.FindObjectsOfTypeAll<InputActionAsset>().FirstOrDefault(a => a.name == "InputSystem_Actions");
-                if (asset != null)
+                if (rightHandDevices[0].TryGetFeatureValue(UnityEngine.XR.CommonUsages.primary2DAxis, out Vector2 rightValue))
                 {
-                    var rightHandMap = asset.FindActionMap("XRI RightHand");
-                    if (rightHandMap != null)
-                    {
-                        var thumbstickAction = rightHandMap.FindAction("ThumbstickMove");
-                        if (thumbstickAction != null && thumbstickAction.enabled)
-                        {
-                            rightJoystickValue = thumbstickAction.ReadValue<Vector2>();
-                        }
-                    }
+                    rightJoystickValue = rightValue;
+                }
+            }
+
+            // バックアップ方法：InputSystemを使用する
+            if (leftJoystickValue.magnitude < 0.1f && leftJoystickAction != null && leftJoystickAction.action != null && leftJoystickAction.action.enabled)
+            {
+                try
+                {
+                    leftJoystickValue = leftJoystickAction.action.ReadValue<Vector2>();
+                }
+                catch (System.Exception ex)
+                {
+                    // エラーの詳細をログに記録
+                    Debug.LogWarning($"[LaserPointer] 左ジョイスティック読取エラー詳細: {ex.Message}");
+                }
+            }
+
+            if (rightJoystickValue.magnitude < 0.1f && rightJoystickAction != null && rightJoystickAction.action != null && rightJoystickAction.action.enabled)
+            {
+                try
+                {
+                    rightJoystickValue = rightJoystickAction.action.ReadValue<Vector2>();
+                }
+                catch (System.Exception ex)
+                {
+                    // エラーの詳細をログに記録
+                    Debug.LogWarning($"[LaserPointer] 右ジョイスティック読取エラー詳細: {ex.Message}");
                 }
             }
 
@@ -713,39 +752,104 @@ public class VRLaserPointer : MonoBehaviour
         try
         {
             // 左右どちらかのジョイスティックが水平方向に傾いているか確認
-            float leftXValue = Mathf.Abs(leftJoystickValue.x) > 0.2f ? leftJoystickValue.x : 0f;
-            float rightXValue = Mathf.Abs(rightJoystickValue.x) > 0.2f ? rightJoystickValue.x : 0f;
-            
+            float leftXValue = Mathf.Abs(leftJoystickValue.x) > 0.1f ? leftJoystickValue.x : 0f;
+            float rightXValue = Mathf.Abs(rightJoystickValue.x) > 0.1f ? rightJoystickValue.x : 0f;
+
             // 両方のジョイスティックの水平入力を合算
             float combinedXInput = leftXValue + rightXValue;
-            
-            if (Mathf.Abs(combinedXInput) > 0.2f)
+
+            // 入力の大きさ（絶対値）
+            float inputMagnitude = Mathf.Abs(combinedXInput);
+
+            if (inputMagnitude > 0.1f)
             {
                 isJoystickScrolling = true;
-                
-                // 現在のScrollRectの正規化された位置を取得
-                Vector2 normalizedPosition = thumbnailScrollRect.normalizedPosition;
-                
-                // 移動量を計算（反転フラグを考慮）
-                float moveAmount = combinedXInput * joystickScrollSensitivity;
-                if (invertScrollDirection)
+
+                // 方向を決定（入力の符号）
+                float inputDirection = Mathf.Sign(combinedXInput);
+
+                // スクロール方向の反転設定を適用
+                if (reverseScrollDirection)
                 {
-                    moveAmount = -moveAmount;
+                    inputDirection = -inputDirection;
                 }
-                
-                // 位置を更新
-                normalizedPosition.x += moveAmount;
-                normalizedPosition.x = Mathf.Clamp01(normalizedPosition.x);
-                thumbnailScrollRect.normalizedPosition = normalizedPosition;
-                
+
+                // 入力の継続時間を更新
+                if (wasScrollingLastFrame)
+                {
+                    // 前のフレームでもスクロールしていた場合、時間を加算
+                    joystickHoldTime += Time.deltaTime;
+                }
+                else
+                {
+                    // 新たにスクロールを開始した場合、時間をリセット
+                    joystickHoldTime = 0f;
+                }
+
+                // 基本速度を計算
+                float currentSpeed = joystickScrollSensitivity * inputMagnitude;
+
+                // 加速度が設定されている場合、時間に応じて速度を増加
+                if (joystickScrollAcceleration > 0f)
+                {
+                    // 加速による速度増加を計算
+                    float accelerationBoost = joystickHoldTime * joystickScrollAcceleration;
+
+                    // 最終的な速度（基本速度＋加速によるブースト）
+                    currentSpeed += accelerationBoost;
+
+                    // 最大速度を超えないように制限
+                    currentSpeed = Mathf.Min(currentSpeed, maxScrollSpeed);
+                }
+
+                // 最終的な移動量を計算
+                float moveAmount = currentSpeed * inputDirection;
+
+                // コンテンツのサイズと表示領域のサイズを取得
+                float contentWidth = thumbnailScrollRect.content.rect.width;
+                float viewportWidth = thumbnailScrollRect.viewport.rect.width;
+
+                // コンテンツ位置を取得
+                Vector2 contentPosition = thumbnailScrollRect.content.anchoredPosition;
+
+                // 新しい位置を計算（ピクセル単位の移動量に変換）
+                contentPosition.x += moveAmount * 20.0f;
+
+                // 位置の制限（左右の端を超えないように）
+                float maxPosition = 0;
+                float minPosition = -(contentWidth - viewportWidth);
+
+                if (contentWidth > viewportWidth) // スクロール可能な場合のみ
+                {
+                    contentPosition.x = Mathf.Clamp(contentPosition.x, minPosition, maxPosition);
+
+                    // 端に到達したら加速をリセット
+                    if (contentPosition.x == maxPosition || contentPosition.x == minPosition)
+                    {
+                        joystickHoldTime = 0f;
+                    }
+                }
+
+                // コンテンツ位置を設定
+                thumbnailScrollRect.content.anchoredPosition = contentPosition;
+
+                // デバッグログ
                 if (Time.frameCount % 30 == 0)
                 {
-                    Debug.LogError($"[LaserPointer] ジョイスティックスクロール: 入力={combinedXInput}, 移動量={moveAmount}, 新位置={normalizedPosition}, 反転={invertScrollDirection}");
+                    Debug.LogError($"[LaserPointer] スクロール: 入力={combinedXInput}, 速度={currentSpeed}, " +
+                                   $"加速時間={joystickHoldTime:F1}秒, 最終移動量={moveAmount * 20.0f}, " +
+                                   $"位置={contentPosition.x:F0}/{minPosition:F0}～{maxPosition:F0}");
                 }
+
+                // 次のフレームのために状態を記録
+                wasScrollingLastFrame = true;
             }
             else
             {
+                // 入力がない場合はスクロールしていない状態にリセット
                 isJoystickScrolling = false;
+                wasScrollingLastFrame = false;
+                joystickHoldTime = 0f;
             }
         }
         catch (System.Exception e)
@@ -1009,14 +1113,12 @@ public class VRLaserPointer : MonoBehaviour
         }
     }
 
-    // ドラッグ処理の更新
     private void UpdateDrag()
     {
-        // 一時的にドラッグ機能を無効化
-        return; // 早期リターンで処理を完全にスキップ
+        // ドラッグ機能を完全に無効化
+        return;
 
-        // 以下は元のコード
-        /*
+        /* 元のドラッグ処理をすべてコメントアウト
         try
         {
             if (triggerPressed && draggedObject != null)
@@ -1693,15 +1795,17 @@ public class VRLaserPointer : MonoBehaviour
                 dotRenderer.material.color = dotPressedColor;
             }
 
-            // コントローラーの初期位置を記録（毎回記録する）
+            // コントローラーの初期位置を記録
             initialControllerPosition = transform.position;
 
-            // スクロール関連の初期化（毎回初期化する）
+            // ドラッグスクロール関連の初期化をコメントアウト
+            /*
             isScrollingMode = false;
             scrollStartPosition = transform.position;
 
             // スクロール情報のデバッグ出力
             Debug.LogError($"[LaserPointer] スクロール初期位置設定: {scrollStartPosition}, HitCanvas={hitCanvas?.name ?? "null"}");
+            */
 
             if (currentTarget != null)
             {
@@ -1722,25 +1826,25 @@ public class VRLaserPointer : MonoBehaviour
                     isThumbnailDrag = false;
                 }
 
-                // スクロール対象かどうかを判定
+                // スクロール関連の処理をコメントアウト
+                /*
                 bool isScrollTarget = hitCanvas != null && hitCanvas.name.Contains("Thumbnail");
 
                 if (isScrollTarget)
                 {
-                    // スクロール対象の場合は、ScrollRectを取得して設定を確認
                     FindScrollRect();
 
                     if (thumbnailScrollRect != null)
                     {
                         Debug.LogError($"[LaserPointer] スクロール対象: ScrollRect={thumbnailScrollRect.name}, Canvas={hitCanvas.name}");
 
-                        // 最新のScrollRect設定を確保
                         thumbnailScrollRect.horizontal = true;
                         thumbnailScrollRect.vertical = false;
                         thumbnailScrollRect.scrollSensitivity = 20.0f;
                         thumbnailScrollRect.decelerationRate = 0f;
                     }
                 }
+                */
 
                 // ポインタダウンの処理
                 HandlePointerDown(currentTarget);
@@ -1773,9 +1877,9 @@ public class VRLaserPointer : MonoBehaviour
             bool shouldTriggerThumbnailClick = false;
 
             if (isThumbnailDrag && dragStartThumbnail != null && dragEndThumbnail != null &&
-                dragStartThumbnail == dragEndThumbnail && !isScrollingMode)
+                dragStartThumbnail == dragEndThumbnail)
             {
-                // スクロールモードになっていない場合のみ選択処理を実行
+                // ドラッグスクロールモードに関わらず常に選択処理を実行するように修正
                 shouldTriggerThumbnailClick = true;
                 Debug.LogError($"[LaserPointer] 同一サムネイル上でトリガー操作: 選択処理実行 - {dragStartThumbnail.name}");
             }
@@ -1910,6 +2014,10 @@ public class VRLaserPointer : MonoBehaviour
 
     private void UpdateScroll()
     {
+        // ドラッグスクロール機能を完全に無効化
+        return;
+
+        /* 元のスクロール処理をすべてコメントアウト
         try
         {
             if (!triggerPressed) return;
@@ -2005,6 +2113,7 @@ public class VRLaserPointer : MonoBehaviour
         {
             Debug.LogError($"[LaserPointer] UpdateScroll エラー: {e.Message}");
         }
+        */
     }
 
     // ScrollRectを検索
