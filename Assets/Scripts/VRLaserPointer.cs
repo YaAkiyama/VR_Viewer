@@ -8,12 +8,12 @@ using System.Linq;
 
 public class VRLaserPointer : MonoBehaviour
 {
-    // スクロール管理用の新しい変数
-    private bool isScrollingMode = false; // スクロールモードかどうか
-    private Vector3 scrollStartPosition; // スクロール開始位置
-    private float scrollDistanceThreshold = 0.05f; // スクロールと判定する距離の閾値
-    private float horizontalScrollSpeed = 0.02f; // 水平スクロールの速度
-    private Vector2 lastScrollPosition; // 最後のスクロール位置
+    // スクロール管理用の変数
+    private bool isScrollingMode = false;
+    private Vector3 scrollStartPosition;
+    private float scrollDistanceThreshold = 0.03f;  // スクロール開始閾値
+    private float horizontalScrollSpeed = 2.0f;    // 大きな値で高速スクロール
+    private Vector2 lastScrollPosition;
 
     [Header("レーザー設定")]
     [SerializeField] private Transform rayOrigin;  // レーザーの発射元（コントローラー）
@@ -1693,15 +1693,18 @@ public class VRLaserPointer : MonoBehaviour
                 dotRenderer.material.color = dotPressedColor;
             }
 
+            // コントローラーの初期位置を記録（毎回記録する）
+            initialControllerPosition = transform.position;
+
+            // スクロール関連の初期化（毎回初期化する）
+            isScrollingMode = false;
+            scrollStartPosition = transform.position;
+
+            // スクロール情報のデバッグ出力
+            Debug.LogError($"[LaserPointer] スクロール初期位置設定: {scrollStartPosition}, HitCanvas={hitCanvas?.name ?? "null"}");
+
             if (currentTarget != null)
             {
-                // コントローラーの初期位置を記録
-                initialControllerPosition = transform.position;
-
-                // スクロール関連の初期化
-                isScrollingMode = false;
-                scrollStartPosition = transform.position;
-
                 // サムネイル関連の処理
                 bool isThumbnail = currentTarget.name.Contains("Thumbnail") ||
                                   (hitCanvas != null && hitCanvas.name.Contains("Thumbnail"));
@@ -1720,13 +1723,23 @@ public class VRLaserPointer : MonoBehaviour
                 }
 
                 // スクロール対象かどうかを判定
-                bool isScrollTarget = hitCanvas != null && hitCanvas.name.Contains("Thumbnail") &&
-                                     !currentTarget.name.Contains("Thumbnail");
+                bool isScrollTarget = hitCanvas != null && hitCanvas.name.Contains("Thumbnail");
 
                 if (isScrollTarget)
                 {
-                    // スクロール対象の場合は、ScrollRectを取得
+                    // スクロール対象の場合は、ScrollRectを取得して設定を確認
                     FindScrollRect();
+
+                    if (thumbnailScrollRect != null)
+                    {
+                        Debug.LogError($"[LaserPointer] スクロール対象: ScrollRect={thumbnailScrollRect.name}, Canvas={hitCanvas.name}");
+
+                        // 最新のScrollRect設定を確保
+                        thumbnailScrollRect.horizontal = true;
+                        thumbnailScrollRect.vertical = false;
+                        thumbnailScrollRect.scrollSensitivity = 20.0f;
+                        thumbnailScrollRect.decelerationRate = 0f;
+                    }
                 }
 
                 // ポインタダウンの処理
@@ -1893,7 +1906,6 @@ public class VRLaserPointer : MonoBehaviour
         Debug.Log("[LaserPointer] Aボタン処理フラグをリセットしました");
     }
 
-    // 新しいスクロール処理
     private void UpdateScroll()
     {
         try
@@ -1911,47 +1923,82 @@ public class VRLaserPointer : MonoBehaviour
                 if (!isScrollingMode && movementDistance > scrollDistanceThreshold)
                 {
                     isScrollingMode = true;
-                    Debug.LogError("[LaserPointer] スクロールモード開始");
+                    Debug.LogError($"[LaserPointer] スクロールモード開始: 移動距離={movementDistance}");
 
-                    // ThumbnailScrollRectを取得
-                    if (thumbnailScrollRect == null)
+                    // スクロール開始時にScrollRectの設定を最適化
+                    if (thumbnailScrollRect != null)
                     {
+                        // 設定の最適化
+                        thumbnailScrollRect.inertia = false;  // 慣性をオフ
+                        thumbnailScrollRect.movementType = ScrollRect.MovementType.Clamped;  // クランプに設定
+                        thumbnailScrollRect.elasticity = 0f;  // 弾性なし
+
+                        // スクロール開始位置を記録
+                        lastScrollPosition = thumbnailScrollRect.normalizedPosition;
+                    }
+                    else
+                    {
+                        // ThumbnailScrollRectを取得
                         FindScrollRect();
+                        if (thumbnailScrollRect != null)
+                        {
+                            // 上記と同じ設定
+                            thumbnailScrollRect.inertia = false;
+                            thumbnailScrollRect.movementType = ScrollRect.MovementType.Clamped;
+                            thumbnailScrollRect.elasticity = 0f;
+                            lastScrollPosition = thumbnailScrollRect.normalizedPosition;
+                        }
                     }
                 }
 
                 // スクロールモードになったらスクロール処理
                 if (isScrollingMode && thumbnailScrollRect != null)
                 {
-                    // 左右移動量を計算（X軸の移動のみを考慮）
-                    Vector3 movement = currentPosition - scrollStartPosition;
+                    // 前のフレームからの相対的な移動量を計算
+                    Vector3 frameDelta = currentPosition - transform.position;
 
-                    // スクロール方向を反転させるかどうかに応じた移動量計算
-                    float xMovement = movement.x * (invertScrollDirection ? -1.0f : 1.0f);
+                    // X軸方向の変化のみを考慮（より安定したスクロール）
+                    float xDelta = frameDelta.x;
+
+                    // スクロール方向のマッピングと感度調整
+                    float scrollDelta = xDelta * horizontalScrollSpeed;
+
+                    // スクロール方向の反転設定を適用
+                    if (invertScrollDirection)
+                    {
+                        scrollDelta = -scrollDelta;
+                    }
 
                     // 現在のスクロール位置を取得
                     Vector2 scrollPosition = thumbnailScrollRect.normalizedPosition;
 
-                    // X軸の移動量をスクロール位置に反映
-                    scrollPosition.x += xMovement * horizontalScrollSpeed;
-
-                    // 値を0-1の範囲に制限
-                    scrollPosition.x = Mathf.Clamp01(scrollPosition.x);
-
-                    // 前回と異なる場合のみ更新（最適化）
-                    if (Vector2.Distance(scrollPosition, lastScrollPosition) > 0.001f)
+                    // スクロール位置を更新（小さな閾値でフィルタリング）
+                    if (Mathf.Abs(scrollDelta) > 0.0005f)
                     {
+                        // スクロール位置を更新
+                        scrollPosition.x += scrollDelta;
+
+                        // 範囲内に制限（0-1）
+                        scrollPosition.x = Mathf.Clamp01(scrollPosition.x);
+
+                        // ScrollRectに適用
                         thumbnailScrollRect.normalizedPosition = scrollPosition;
+
+                        // 最後の位置を更新
                         lastScrollPosition = scrollPosition;
 
                         // スクロール中フラグをセット
                         isScrolling = true;
 
+                        // デバッグ情報
                         if (Time.frameCount % 10 == 0)
                         {
-                            Debug.LogError($"[LaserPointer] スクロール更新: Position={scrollPosition}, Movement={xMovement}");
+                            Debug.LogError($"[LaserPointer] スクロール: Position={scrollPosition}, Delta={scrollDelta}");
                         }
                     }
+
+                    // 最新のコントローラー位置を記録
+                    scrollStartPosition = currentPosition;
                 }
             }
         }
@@ -1960,6 +2007,7 @@ public class VRLaserPointer : MonoBehaviour
             Debug.LogError($"[LaserPointer] UpdateScroll エラー: {e.Message}");
         }
     }
+
     // ScrollRectを検索
     private void FindScrollRect()
     {
