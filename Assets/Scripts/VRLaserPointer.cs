@@ -139,7 +139,7 @@ public class VRLaserPointer : MonoBehaviour
             // PanelVisibilityControllerを探す（もしSerializeFieldで設定されていなければ）
             if (panelVisibilityController == null)
             {
-                panelVisibilityController = FindFirstObjectByType<PanelVisibilityController>();
+                panelVisibilityController = FindAnyObjectByType<PanelVisibilityController>();
                 if (panelVisibilityController == null)
                 {
                     Debug.LogWarning("[LaserPointer] PanelVisibilityControllerが見つかりません！");
@@ -153,7 +153,7 @@ public class VRLaserPointer : MonoBehaviour
             // EventSystemを探す（もしSerializeFieldで設定されていなければ）
             if (eventSystem == null)
             {
-                eventSystem = FindFirstObjectByType<EventSystem>();
+                eventSystem = FindAnyObjectByType<EventSystem>();
                 if (eventSystem == null)
                 {
                     Debug.LogWarning("[LaserPointer] EventSystemが見つかりません！");
@@ -1373,10 +1373,10 @@ public class VRLaserPointer : MonoBehaviour
         }
 
         // 4. 最後の手段として、特定の名前のオブジェクトを探す
-        if (draggedObject.name.Contains("Thumbnail") || 
+        if (draggedObject.name.Contains("Thumbnail") ||
             (draggedObject.transform.parent != null && draggedObject.transform.parent.name.Contains("Thumbnail")))
         {
-            GameObject[] allObjects = GameObject.FindObjectsOfType<GameObject>();
+            GameObject[] allObjects = GameObject.FindObjectsByType<GameObject>(FindObjectsSortMode.None);
             foreach (GameObject obj in allObjects)
             {
                 if (obj.name.Contains("Scroll") || obj.name.Contains("Content"))
