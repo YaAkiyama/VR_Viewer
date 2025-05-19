@@ -10,14 +10,10 @@ using UnityEngine.XR; // XR InputDeviceのため
 public class VRLaserPointer : MonoBehaviour
 {
     [Header("ジョイスティックスクロール設定")]
-    // joystickScrollSensitivity は既存の変数を使用するので再定義しない
+    [SerializeField] private float joystickScrollSensitivity = 0.03f; // ジョイスティックでのスクロール感度
     [SerializeField] private float joystickScrollAcceleration = 0.005f; // スクロール加速度（0で加速なし）
     [SerializeField] private float maxScrollSpeed = 0.1f; // 最大スクロール速度
     [SerializeField] private bool reverseScrollDirection = true; // スクロール方向を反転するか
-
-    // ジョイスティックスクロール加速用の内部変数
-    private float joystickHoldTime = 0f;
-    private bool wasScrollingLastFrame = false;
 
     // ジョイスティックスクロール加速用の内部変数
     private float joystickHoldTime = 0f;
@@ -68,7 +64,6 @@ public class VRLaserPointer : MonoBehaviour
     [SerializeField] private float horizontalScrollMultiplier = 5.0f; // 水平スクロール用の乗数
     [SerializeField] private bool invertScrollDirection = true; // スクロール方向を反転するかどうか
     [SerializeField] private bool preventThumbnailSelectionWhileDragging = true; // ドラッグ中のサムネイル選択を防止するかどうか
-    [SerializeField] private float joystickScrollSensitivity = 0.03f; // ジョイスティックでのスクロール感度
 
     // パブリックゲッターメソッド（エディタ拡張用）
     public Color GetRayColor() => rayColor;
@@ -393,9 +388,9 @@ public class VRLaserPointer : MonoBehaviour
             UpdateVisibleCanvasList();
 
             // ジョイスティックスクロールの設定を初期化
-            joystickScrollSensitivity = 0.02f; // 既存の変数
-            joystickScrollAcceleration = 0.005f;
-            maxScrollSpeed = 0.1f;
+            joystickScrollSensitivity = 0.12f;
+            joystickScrollAcceleration = 0.10f;
+            maxScrollSpeed = 0.3f;
             reverseScrollDirection = true;
             Debug.LogError($"[LaserPointer] ジョイスティックスクロール設定: 感度={joystickScrollSensitivity}, " +
                            $"加速度={joystickScrollAcceleration}, 最大速度={maxScrollSpeed}, 方向反転={reverseScrollDirection}");
